@@ -8,6 +8,7 @@ Use the language-specific index above for the full documentation set.
 
 # Credits, used repositories
 
+- razed - Pragma
 - Jolt Physics - Jorrit Rouwe, and contributors
 - Dear ImGui - Omar Cornut, and contributors
 
