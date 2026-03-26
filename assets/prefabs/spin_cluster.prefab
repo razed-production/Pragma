@@ -1,0 +1,48 @@
+# Pragma prefab file
+version=1
+
+prefab_object
+id=1
+name=Spin Cluster Root
+position=0.0,0.0,0.0
+scale=1.0,1.0,1.0
+rotation=0.0,0.0,0.0
+mesh.asset=mesh.cube
+material.asset=material.default_checker
+script=Spin.Center
+end
+
+prefab_object
+id=2
+parent=1
+name=Spin Cluster Warm
+position=3.0,0.0,-2.5
+scale=1.0,1.0,1.0
+rotation=0.0,0.35,0.0
+mesh.asset=mesh.cube
+material.asset=material.warm
+script=Spin.Warm
+end
+
+prefab_object
+id=3
+parent=1
+name=Spin Cluster Cool
+position=-3.5,0.5,1.5
+scale=1.0,1.0,1.0
+rotation=0.0,-0.5,0.0
+mesh.asset=mesh.cube
+material.asset=material.cool
+script=Spin.Cool
+end
+
+prefab_object
+id=4
+parent=1
+name=Spin Cluster Rear
+position=1.5,-1.0,4.0
+scale=1.0,1.0,1.0
+rotation=0.0,1.0,0.0
+mesh.asset=mesh.cube
+material.asset=material.default_checker
+end

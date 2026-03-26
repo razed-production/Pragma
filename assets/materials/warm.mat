@@ -1,0 +1,6 @@
+# Pragma material asset
+version=1
+base_color=1.0,0.72,0.55,1.0
+roughness=0.25
+use_albedo_texture=true
+albedo_texture=texture.checker
