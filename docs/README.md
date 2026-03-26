@@ -8,8 +8,9 @@ Use the language-specific index above for the full documentation set.
 
 # Credits, used repositories
 
-- razed - Pragma
 - Jolt Physics - Jorrit Rouwe, and contributors
 - Dear ImGui - Omar Cornut, and contributors
 
 All rights belong to their authors. This software does not violate the author's data repository license.
+Developed by razed.
+razed.production 2026
