@@ -14,8 +14,8 @@ razed - idea, code
 
 # Credits, used repositories
 
-- Jolt Physics - Jorrit Rouwe, and contributors
-- Dear ImGui - Omar Cornut, and contributors
+- [Jolt Physics](https://github.com/jrouwe/JoltPhysics) - Jorrit Rouwe, and contributors
+- [Dear ImGui](https://github.com/ocornut/imgui) - Omar Cornut, and contributors
 
 All rights belong to their authors. This software does not violate the author's data repository license.
 
