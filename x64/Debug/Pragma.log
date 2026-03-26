@@ -1,0 +1,38 @@
+﻿  main.cpp
+  Application.cpp
+  Factory.cpp
+D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3308,27): error C2027: использование неопределенного типа "Pragma::RHI::IPipelineState"
+  (компиляция исходного файла "src/Pragma/Core/Application.cpp")
+      D:\repos\Pragma\Pragma\src\Pragma\Renderer\RenderSystem.h(13,7):
+       см. объявление "Pragma::RHI::IPipelineState"
+      D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3308,27):
+      контекст создания экземпляра шаблона (сначала самый старый)
+          D:\repos\Pragma\Pragma\src\Pragma\Renderer\RenderSystem.h(38,50):
+          выполняется компиляция ссылки на экземпляр класс шаблон функции "std::unique_ptr<Pragma::RHI::IPipelineState,std::default_delete<Pragma::RHI::IPipelineState>>"
+          D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3352,92):
+          выполняется компиляция ссылки на экземпляр класс шаблон функции "std::default_delete<Pragma::RHI::IPipelineState>"
+          D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3307,23):
+          во время компиляции функции-члена класс шаблон "void std::default_delete<Pragma::RHI::IPipelineState>::operator ()(_Ty *) noexcept const"
+          with
+          [
+              _Ty=Pragma::RHI::IPipelineState
+          ]
+              D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3427,33):
+              см. первую ссылку на "std::default_delete<Pragma::RHI::IPipelineState>::operator ()" в "std::unique_ptr<Pragma::RHI::IPipelineState,std::default_delete<Pragma::RHI::IPipelineState>>::~unique_ptr"
+              D:\repos\Pragma\Pragma\src\Pragma\Renderer\RenderSystem.h(41,1):
+              см. первую ссылку на "std::unique_ptr<Pragma::RHI::IPipelineState,std::default_delete<Pragma::RHI::IPipelineState>>::~unique_ptr" в "Pragma::Renderer::RenderSystem::~RenderSystem"
+  
+D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3308,25): error C2338: static_assert failed: 'can't delete an incomplete type'
+  (компиляция исходного файла "src/Pragma/Core/Application.cpp")
+  
+D:\Programs\VSC\VC\Tools\MSVC\14.44.35207\include\memory(3309,9): warning C4150: удаление указателя на неполный тип "Pragma::RHI::IPipelineState"; деструктор не вызван
+  (компиляция исходного файла "src/Pragma/Core/Application.cpp")
+      D:\repos\Pragma\Pragma\src\Pragma\Renderer\RenderSystem.h(13,7):
+       см. объявление "Pragma::RHI::IPipelineState"
+  
+  DX11CommandList.cpp
+  DX11Device.cpp
+  DX11Resources.cpp
+  DX11Swapchain.cpp
+  RenderSystem.cpp
+  Создание кода...

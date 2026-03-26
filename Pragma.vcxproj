@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{ec1de576-e87a-446f-8da8-67992210c237}</ProjectGuid>
+    <RootNamespace>Pragma</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\imgui;$(ProjectDir)external\imgui\backends;$(ProjectDir)external\JoltPhysics-master;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir)external\imgui;$(ProjectDir)external\imgui\backends;$(ProjectDir)external\JoltPhysics-master;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Pragma\Assets\ImageLoader.cpp" />
+    <ClCompile Include="src\Pragma\Assets\AssetManifest.cpp" />
+    <ClCompile Include="src\Pragma\Assets\AssetManager.cpp" />
+    <ClCompile Include="src\Pragma\Assets\MaterialLoader.cpp" />
+    <ClCompile Include="src\Pragma\Assets\ObjLoader.cpp" />
+    <ClCompile Include="src\Pragma\Core\Application.cpp" />
+    <ClCompile Include="src\Pragma\Core\DemoScene.cpp" />
+    <ClCompile Include="src\Pragma\Core\PrefabSerializer.cpp" />
+    <ClCompile Include="src\Pragma\Core\SceneRuntimeBuilder.cpp" />
+    <ClCompile Include="src\Pragma\Core\SceneStateBridge.cpp" />
+    <ClCompile Include="src\Pragma\Editor\EditorUI.cpp" />
+    <ClCompile Include="src\Pragma\Physics\PhysicsSystem.cpp" />
+    <ClCompile Include="src\Pragma\Core\SceneDocument.cpp" />
+    <ClCompile Include="src\Pragma\Core\SceneSerializer.cpp" />
+    <ClCompile Include="src\Pragma\DebugUI\DebugUI.cpp" />
+    <ClCompile Include="external\imgui\imgui.cpp" />
+    <ClCompile Include="external\imgui\imgui_draw.cpp" />
+    <ClCompile Include="external\imgui\imgui_tables.cpp" />
+    <ClCompile Include="external\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="external\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="external\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\BehaviourSystem.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\Camera.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\CameraSystem.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\EntityHandle.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\ManagedScriptComponent.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\NativeScriptRegistry.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\Primitives.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\World.cpp" />
+    <ClCompile Include="src\Pragma\Scripting\DotNetHostFxr.cpp" />
+    <ClCompile Include="src\Pragma\Scripting\ManagedScriptHost.cpp" />
+    <ClCompile Include="src\Pragma\Platform\Window.cpp" />
+    <ClCompile Include="src\Pragma\RHI\Factory.cpp" />
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11CommandList.cpp" />
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Device.cpp" />
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Resources.cpp" />
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Swapchain.cpp" />
+    <ClCompile Include="src\Pragma\Renderer\RenderSystem.cpp" />
+    <ClCompile Include="external\JoltPhysics-master\Jolt\**\*.cpp" Exclude="external\JoltPhysics-master\Jolt\Compute\**\*.cpp;external\JoltPhysics-master\Jolt\Renderer\**\*.cpp;external\JoltPhysics-master\Jolt\Shaders\**\*.cpp">
+      <WarningLevel>Level3</WarningLevel>
+      <ObjectFileName>$(IntDir)Jolt\%(RecursiveDir)%(Filename).obj</ObjectFileName>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Pragma\Assets\AssetId.h" />
+    <ClInclude Include="src\Pragma\Assets\ImageAssetData.h" />
+    <ClInclude Include="src\Pragma\Assets\ImageLoader.h" />
+    <ClInclude Include="src\Pragma\Assets\AssetManifest.h" />
+    <ClInclude Include="src\Pragma\Assets\AssetManager.h" />
+    <ClInclude Include="src\Pragma\Assets\MaterialAssetData.h" />
+    <ClInclude Include="src\Pragma\Assets\MaterialLoader.h" />
+    <ClInclude Include="src\Pragma\Assets\MeshAssetData.h" />
+    <ClInclude Include="src\Pragma\Assets\ObjLoader.h" />
+    <ClInclude Include="src\Pragma\Core\Assert.h" />
+    <ClInclude Include="src\Pragma\Core\Application.h" />
+    <ClInclude Include="src\Pragma\Core\DemoScene.h" />
+    <ClInclude Include="src\Pragma\Core\PrefabSerializer.h" />
+    <ClInclude Include="src\Pragma\Core\SceneObjectTemplate.h" />
+    <ClInclude Include="src\Pragma\Editor\EditorUI.h" />
+    <ClInclude Include="src\Pragma\Core\EngineInput.h" />
+    <ClInclude Include="src\Pragma\Core\SceneDocument.h" />
+    <ClInclude Include="src\Pragma\Core\SceneRuntimeBuilder.h" />
+    <ClInclude Include="src\Pragma\Core\SceneSerializer.h" />
+    <ClInclude Include="src\Pragma\Core\SceneStateBridge.h" />
+    <ClInclude Include="src\Pragma\DebugUI\DebugUI.h" />
+    <ClInclude Include="src\Pragma\Core\EngineConfig.h" />
+    <ClInclude Include="src\Pragma\Core\EngineTime.h" />
+    <ClInclude Include="src\Pragma\Core\Log.h" />
+    <ClInclude Include="src\Pragma\Core\Profiler.h" />
+    <ClInclude Include="src\Pragma\Core\Result.h" />
+    <ClInclude Include="src\Pragma\Core\SceneHistory.h" />
+    <ClInclude Include="src\Pragma\Math\Matrix4.h" />
+    <ClInclude Include="src\Pragma\Math\Quaternion.h" />
+    <ClInclude Include="src\Pragma\Math\Vector3.h" />
+    <ClInclude Include="src\Pragma\Physics\BoxColliderComponent.h" />
+    <ClInclude Include="src\Pragma\Physics\PhysicsSystem.h" />
+    <ClInclude Include="src\Pragma\Physics\RigidBodyComponent.h" />
+    <ClInclude Include="src\Pragma\Platform\InputState.h" />
+    <ClInclude Include="src\Pragma\Platform\Window.h" />
+    <ClInclude Include="src\Pragma\RHI\BackendType.h" />
+    <ClInclude Include="src\Pragma\RHI\CommandList.h" />
+    <ClInclude Include="src\Pragma\RHI\Device.h" />
+    <ClInclude Include="src\Pragma\RHI\Factory.h" />
+    <ClInclude Include="src\Pragma\RHI\Resources.h" />
+    <ClInclude Include="src\Pragma\RHI\Swapchain.h" />
+    <ClInclude Include="src\Pragma\RHI\Types.h" />
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11CommandList.h" />
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Device.h" />
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Resources.h" />
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Swapchain.h" />
+    <ClInclude Include="src\Pragma\Renderer\Camera.h" />
+    <ClInclude Include="src\Pragma\Renderer\CameraControllerComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\CameraSystem.h" />
+    <ClInclude Include="src\Pragma\Renderer\Material.h" />
+    <ClInclude Include="src\Pragma\Renderer\ManagedScriptComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\BehaviourComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\BehaviourContext.h" />
+    <ClInclude Include="src\Pragma\Renderer\BehaviourSystem.h" />
+    <ClInclude Include="src\Pragma\Renderer\Component.h" />
+    <ClInclude Include="src\Pragma\Renderer\Entity.h" />
+    <ClInclude Include="src\Pragma\Renderer\EntityHandle.h" />
+    <ClInclude Include="src\Pragma\Renderer\LightComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\CameraComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\Mesh.h" />
+    <ClInclude Include="src\Pragma\Renderer\MeshRendererComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\NativeScriptComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\NativeScriptRegistry.h" />
+    <ClInclude Include="src\Pragma\Renderer\PrefabInstanceComponent.h" />
+    <ClInclude Include="src\Pragma\Renderer\Primitives.h" />
+    <ClInclude Include="src\Pragma\Renderer\RenderItem.h" />
+    <ClInclude Include="src\Pragma\Renderer\Scene.h" />
+    <ClInclude Include="src\Pragma\Renderer\SceneObject.h" />
+    <ClInclude Include="src\Pragma\Renderer\SceneObjectId.h" />
+    <ClInclude Include="src\Pragma\Renderer\ScriptableEntity.h" />
+    <ClInclude Include="src\Pragma\Renderer\Transform.h" />
+    <ClInclude Include="src\Pragma\Renderer\World.h" />
+    <ClInclude Include="src\Pragma\Scripting\DotNetHostFxr.h" />
+    <ClInclude Include="src\Pragma\Scripting\ManagedScriptHost.h" />
+    <ClInclude Include="src\Pragma\Renderer\Vertex.h" />
+    <ClInclude Include="src\Pragma\Renderer\RenderSystem.h" />
+    <ClInclude Include="external\imgui\imgui.h" />
+    <ClInclude Include="external\imgui\imgui_internal.h" />
+    <ClInclude Include="external\imgui\imconfig.h" />
+    <ClInclude Include="external\imgui\imstb_rectpack.h" />
+    <ClInclude Include="external\imgui\imstb_textedit.h" />
+    <ClInclude Include="external\imgui\imstb_truetype.h" />
+    <ClInclude Include="external\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="external\imgui\backends\imgui_impl_win32.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

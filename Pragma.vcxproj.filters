@@ -1,0 +1,462 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Исходные файлы\Core">
+      <UniqueIdentifier>{D1251A9E-2F63-4A6B-B0EA-BE113C5D0A81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\RHI">
+      <UniqueIdentifier>{F11BE5B6-CF3E-4462-A572-7CAAFE1E6B60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\RHI\DX11">
+      <UniqueIdentifier>{93D5D22F-89D5-4B6A-BD7C-F71743D2B0A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Renderer">
+      <UniqueIdentifier>{3427AD0A-0AF0-43D2-B49F-6A4C31F28F38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Platform">
+      <UniqueIdentifier>{0321B4B0-A95F-49A8-A4BC-34A24840D37D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Math">
+      <UniqueIdentifier>{A2C25453-5D4A-46E0-AB0B-8FC31AEEB5FA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Assets">
+      <UniqueIdentifier>{8C2AA454-D622-460A-B4B1-8F29D3FB6F11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\DebugUI">
+      <UniqueIdentifier>{4D3E1D1C-4E8F-4E77-BF4B-E8A4F06F1F08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Editor">
+      <UniqueIdentifier>{1A9A7C7D-75EB-4B34-929C-5B1D9A9965B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Physics">
+      <UniqueIdentifier>{91F0F372-B670-4A09-B95B-D46FE0DB8B4C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\Scripting">
+      <UniqueIdentifier>{C1E580A9-9E95-4C90-B830-B8E83F217F60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\External\ImGui">
+      <UniqueIdentifier>{C68F7D2B-6B01-469B-98C8-404D9B92D6D2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Core">
+      <UniqueIdentifier>{4CE4AA76-5476-4E8F-8E0B-171C7C8A01E1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\RHI">
+      <UniqueIdentifier>{4A922F35-CC47-4C70-BD0E-FD4C533B1E6A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\RHI\DX11">
+      <UniqueIdentifier>{5E06D3D2-6F1B-4810-BC91-EDC4B87EBC1E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Renderer">
+      <UniqueIdentifier>{98E22A7E-6952-4BD9-8A80-5E220A672F8A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Platform">
+      <UniqueIdentifier>{7A56A7A4-4D9C-4AF0-8DB3-D05D0D8335A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Math">
+      <UniqueIdentifier>{B00A06EC-9E12-4F22-B74A-0B850D46BB11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Assets">
+      <UniqueIdentifier>{F7E10E10-1A95-4919-B7D1-249A5107D8A1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\DebugUI">
+      <UniqueIdentifier>{878A0BC4-5616-4FC9-B549-FAB04BA804C0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Editor">
+      <UniqueIdentifier>{B0A7A998-796D-43A8-BB2A-3565A927579A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Physics">
+      <UniqueIdentifier>{275B7447-85EA-4C8F-A61A-B51D1D67562D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\Scripting">
+      <UniqueIdentifier>{43CD38D7-3283-4AB8-BB65-8CDA1FF85D04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\External\ImGui">
+      <UniqueIdentifier>{2F9C46F3-7D08-4FE3-BD57-471C235C8D2A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Assets\ImageLoader.cpp">
+      <Filter>Исходные файлы\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Assets\AssetManifest.cpp">
+      <Filter>Исходные файлы\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Assets\AssetManager.cpp">
+      <Filter>Исходные файлы\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Assets\MaterialLoader.cpp">
+      <Filter>Исходные файлы\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Assets\ObjLoader.cpp">
+      <Filter>Исходные файлы\Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\Application.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\DemoScene.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\PrefabSerializer.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\SceneRuntimeBuilder.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\SceneStateBridge.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Editor\EditorUI.cpp">
+      <Filter>Исходные файлы\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Physics\PhysicsSystem.cpp">
+      <Filter>Исходные файлы\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\SceneSerializer.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Core\SceneDocument.cpp">
+      <Filter>Исходные файлы\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\DebugUI\DebugUI.cpp">
+      <Filter>Исходные файлы\DebugUI</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\imgui.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\imgui_draw.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\imgui_tables.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\imgui_widgets.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="external\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>Исходные файлы\External\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\BehaviourSystem.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\Camera.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\CameraSystem.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\EntityHandle.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\ManagedScriptComponent.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\NativeScriptRegistry.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\World.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\Primitives.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Scripting\DotNetHostFxr.cpp">
+      <Filter>Исходные файлы\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Scripting\ManagedScriptHost.cpp">
+      <Filter>Исходные файлы\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Platform\Window.cpp">
+      <Filter>Исходные файлы\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\RHI\Factory.cpp">
+      <Filter>Исходные файлы\RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11CommandList.cpp">
+      <Filter>Исходные файлы\RHI\DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Device.cpp">
+      <Filter>Исходные файлы\RHI\DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Resources.cpp">
+      <Filter>Исходные файлы\RHI\DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\RHI\DX11\DX11Swapchain.cpp">
+      <Filter>Исходные файлы\RHI\DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Pragma\Renderer\RenderSystem.cpp">
+      <Filter>Исходные файлы\Renderer</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Pragma\Assets\AssetId.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\ImageAssetData.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\ImageLoader.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\AssetManifest.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\AssetManager.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\MaterialAssetData.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\MaterialLoader.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\MeshAssetData.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Assets\ObjLoader.h">
+      <Filter>Файлы заголовков\Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\Application.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\DemoScene.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\PrefabSerializer.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneObjectTemplate.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Editor\EditorUI.h">
+      <Filter>Файлы заголовков\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneSerializer.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneDocument.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneRuntimeBuilder.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneStateBridge.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\EngineInput.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\DebugUI\DebugUI.h">
+      <Filter>Файлы заголовков\DebugUI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\Assert.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\EngineConfig.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\EngineTime.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\Log.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\Profiler.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\Result.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Core\SceneHistory.h">
+      <Filter>Файлы заголовков\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Math\Matrix4.h">
+      <Filter>Файлы заголовков\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Math\Quaternion.h">
+      <Filter>Файлы заголовков\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Math\Vector3.h">
+      <Filter>Файлы заголовков\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Physics\BoxColliderComponent.h">
+      <Filter>Файлы заголовков\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Physics\PhysicsSystem.h">
+      <Filter>Файлы заголовков\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Physics\RigidBodyComponent.h">
+      <Filter>Файлы заголовков\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Platform\InputState.h">
+      <Filter>Файлы заголовков\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Platform\Window.h">
+      <Filter>Файлы заголовков\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\BackendType.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\CommandList.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\Device.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\Factory.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\Resources.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\Swapchain.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\Types.h">
+      <Filter>Файлы заголовков\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11CommandList.h">
+      <Filter>Файлы заголовков\RHI\DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Device.h">
+      <Filter>Файлы заголовков\RHI\DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Resources.h">
+      <Filter>Файлы заголовков\RHI\DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\RHI\DX11\DX11Swapchain.h">
+      <Filter>Файлы заголовков\RHI\DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Camera.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\CameraControllerComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\CameraSystem.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Material.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\ManagedScriptComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\BehaviourComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\BehaviourContext.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\BehaviourSystem.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Component.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Entity.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\EntityHandle.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\World.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Scripting\DotNetHostFxr.h">
+      <Filter>Файлы заголовков\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Scripting\ManagedScriptHost.h">
+      <Filter>Файлы заголовков\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\LightComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\CameraComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Mesh.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\MeshRendererComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\NativeScriptComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\NativeScriptRegistry.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\PrefabInstanceComponent.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Primitives.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\RenderItem.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Scene.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\SceneObject.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\SceneObjectId.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\ScriptableEntity.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Transform.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\Vertex.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Pragma\Renderer\RenderSystem.h">
+      <Filter>Файлы заголовков\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imgui.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imgui_internal.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imconfig.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imstb_rectpack.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imstb_textedit.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\imstb_truetype.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\backends\imgui_impl_dx11.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="external\imgui\backends\imgui_impl_win32.h">
+      <Filter>Файлы заголовков\External\ImGui</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
