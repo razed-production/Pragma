@@ -22,5 +22,6 @@ public:
     virtual void SetTexture(std::uint32_t slot, ITexture* texture) = 0;
     virtual void Draw(std::uint32_t vertexCount, std::uint32_t firstVertex) = 0;
     virtual void DrawIndexed(std::uint32_t indexCount, std::uint32_t firstIndex, std::int32_t vertexOffset) = 0;
+    virtual void DrawIndexedInstanced(std::uint32_t indexCountPerInstance, std::uint32_t instanceCount, std::uint32_t firstIndex, std::int32_t vertexOffset, std::uint32_t firstInstance) = 0;
 };
 }

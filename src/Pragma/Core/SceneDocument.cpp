@@ -648,6 +648,73 @@ bool SceneDocument::SetMaterialAsset(const Pragma::Renderer::EntityId id, const 
     return true;
 }
 
+bool SceneDocument::SetMeshAsset(
+    const Pragma::Renderer::EntityId id,
+    const Pragma::Renderer::MeshLodSlot slot,
+    const Pragma::Assets::AssetId& meshAssetId)
+{
+    PRAGMA_ASSERT(m_loaded, "SceneDocument::SetMeshAsset requires a loaded document.");
+
+    if (slot == Pragma::Renderer::MeshLodSlot::Base && meshAssetId.empty())
+    {
+        return false;
+    }
+
+    SerializedSceneObject* serializedObject = FindSerializedObject(id);
+    Pragma::Renderer::SceneObject* runtimeObject = m_scene.FindObject(id);
+    if (serializedObject == nullptr || runtimeObject == nullptr || !serializedObject->MeshRenderer.has_value())
+    {
+        return false;
+    }
+
+    Pragma::Renderer::MeshRendererComponent* meshRenderer = runtimeObject->GetMeshRenderer();
+    if (meshRenderer == nullptr)
+    {
+        return false;
+    }
+
+    const char* actionLabel = "Assign Mesh";
+    switch (slot)
+    {
+    case Pragma::Renderer::MeshLodSlot::Lod1:
+        actionLabel = "Assign LOD1 Mesh";
+        break;
+    case Pragma::Renderer::MeshLodSlot::Lod2:
+        actionLabel = "Assign LOD2 Mesh";
+        break;
+    case Pragma::Renderer::MeshLodSlot::Base:
+    default:
+        actionLabel = "Assign Mesh";
+        break;
+    }
+
+    CaptureUndoState(actionLabel);
+
+    switch (slot)
+    {
+    case Pragma::Renderer::MeshLodSlot::Base:
+        serializedObject->MeshRenderer->MeshAsset = meshAssetId;
+        meshRenderer->MeshAssetId = meshAssetId;
+        meshRenderer->Mesh = m_assets.LoadMesh(meshAssetId);
+        break;
+    case Pragma::Renderer::MeshLodSlot::Lod1:
+        serializedObject->MeshRenderer->MediumLodMeshAsset = meshAssetId;
+        meshRenderer->MediumLodMeshAssetId = meshAssetId;
+        meshRenderer->MediumLodMesh = meshAssetId.empty() ? nullptr : m_assets.LoadMesh(meshAssetId);
+        break;
+    case Pragma::Renderer::MeshLodSlot::Lod2:
+        serializedObject->MeshRenderer->LowLodMeshAsset = meshAssetId;
+        meshRenderer->LowLodMeshAssetId = meshAssetId;
+        meshRenderer->LowLodMesh = meshAssetId.empty() ? nullptr : m_assets.LoadMesh(meshAssetId);
+        break;
+    default:
+        return false;
+    }
+
+    UpdateDirtyState();
+    return true;
+}
+
 Pragma::Renderer::EntityId SceneDocument::InstantiatePrefab(
     const Pragma::Assets::AssetId& prefabAssetId,
     const Pragma::Renderer::EntityId parentId)

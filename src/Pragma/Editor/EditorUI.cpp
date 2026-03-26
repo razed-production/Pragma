@@ -5,6 +5,7 @@
 #include "Pragma/Physics/PhysicsSystem.h"
 #include "Pragma/Renderer/LightComponent.h"
 #include "Pragma/Renderer/ManagedScriptComponent.h"
+#include "Pragma/Renderer/RenderSystem.h"
 #include "Pragma/Renderer/NativeScriptComponent.h"
 #include "Pragma/Renderer/Transform.h"
 #include "imgui.h"
@@ -102,6 +103,58 @@ const char* ToRigidBodyCollisionLayerLabel(const Pragma::Renderer::RigidBodyColl
     default:
         return "Default";
     }
+}
+
+const char* ToManagedLifecycleLabel(const Pragma::Renderer::ManagedScriptComponent::LifecycleState state) noexcept
+{
+    using LifecycleState = Pragma::Renderer::ManagedScriptComponent::LifecycleState;
+
+    switch (state)
+    {
+    case LifecycleState::Uninitialized:
+        return "Uninitialized";
+    case LifecycleState::Created:
+        return "Created";
+    case LifecycleState::Started:
+        return "Started";
+    case LifecycleState::Running:
+        return "Running";
+    case LifecycleState::Destroyed:
+        return "Destroyed";
+    case LifecycleState::Failed:
+        return "Failed";
+    default:
+        return "Unknown";
+    }
+}
+
+const Pragma::Scripting::ManagedScriptProject* FindManagedProject(
+    const std::vector<Pragma::Scripting::ManagedScriptProject>& projects,
+    const std::string_view assetId) noexcept
+{
+    const auto it = std::find_if(
+        projects.begin(),
+        projects.end(),
+        [assetId](const Pragma::Scripting::ManagedScriptProject& project)
+        {
+            return project.Asset.Value == assetId;
+        });
+    return it != projects.end() ? &(*it) : nullptr;
+}
+
+const Pragma::Scripting::ManagedScriptTypeMetadata* FindManagedScriptType(
+    const std::vector<Pragma::Scripting::ManagedScriptTypeMetadata>& scriptTypes,
+    const std::string_view assetId,
+    const std::string_view typeName) noexcept
+{
+    const auto it = std::find_if(
+        scriptTypes.begin(),
+        scriptTypes.end(),
+        [assetId, typeName](const Pragma::Scripting::ManagedScriptTypeMetadata& metadata)
+        {
+            return metadata.ProjectAsset.Value == assetId && metadata.TypeName == typeName;
+        });
+    return it != scriptTypes.end() ? &(*it) : nullptr;
 }
 
 bool MatchesHierarchyFilter(const Pragma::Renderer::SceneObject& object, const char* filterText)
@@ -275,6 +328,7 @@ Pragma::Math::Vector3 GetCameraForward(const float yawRadians, const float pitch
 void EditorUI::BeginFrame(
     const float deltaSeconds,
     Pragma::Core::DemoScene& demoScene,
+    Pragma::Renderer::RenderSystem& renderSystem,
     Pragma::Physics::PhysicsSystem& physicsSystem,
     bool& showDiagnosticsWindow,
     bool& showProfilerWindow,
@@ -403,6 +457,21 @@ void EditorUI::BeginFrame(
                 m_reloadSceneRequested = true;
             }
 
+            if (ImGui::BeginMenu("Open Scene"))
+            {
+                const auto availableScenes = demoScene.GetAvailableSceneAssetNames();
+                const std::string currentSceneAssetName = demoScene.GetCurrentSceneAssetId().Value;
+                for (const std::string& sceneAssetName : availableScenes)
+                {
+                    if (ImGui::MenuItem(sceneAssetName.c_str(), nullptr, sceneAssetName == currentSceneAssetName))
+                    {
+                        m_sceneLoadRequest.SceneAssetName = sceneAssetName;
+                        m_sceneLoadRequest.Pending = true;
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
             ImGui::Separator();
             if (ImGui::BeginMenu("Create"))
             {
@@ -470,10 +539,14 @@ void EditorUI::BeginFrame(
             ImGui::MenuItem("Hierarchy", nullptr, &m_showHierarchyWindow);
             ImGui::MenuItem("Scene View", nullptr, &m_showSceneViewWindow);
             ImGui::MenuItem("Inspector", nullptr, &m_showInspectorWindow);
+            ImGui::MenuItem("Settings", nullptr, &m_showSettingsWindow);
             ImGui::MenuItem("Material Browser", nullptr, &m_showMaterialBrowserWindow);
             ImGui::MenuItem("Prefab Browser", nullptr, &m_showPrefabBrowserWindow);
+            ImGui::MenuItem("Managed Projects", nullptr, &m_showManagedProjectsWindow);
+            ImGui::MenuItem("Managed Scripts", nullptr, &m_showManagedScriptsWindow);
             ImGui::MenuItem("Physics Debug", nullptr, &m_showPhysicsDebugWindow);
             ImGui::MenuItem("Physics Overlay", nullptr, &m_showPhysicsOverlay);
+            ImGui::MenuItem("LOD Overlay", nullptr, &m_showLodOverlay);
             ImGui::MenuItem("Notifications", nullptr, &m_showNotificationsWindow);
             ImGui::MenuItem("Status", nullptr, &m_showStatusWindow);
             ImGui::Separator();
@@ -484,8 +557,80 @@ void EditorUI::BeginFrame(
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Settings"))
+        {
+            if (ImGui::MenuItem("Graphics", nullptr, m_showSettingsWindow))
+            {
+                m_showSettingsWindow = true;
+            }
+
+            if (ImGui::BeginMenu("Graphics Preset"))
+            {
+                const Pragma::Core::GraphicsQualityPreset currentPreset = renderSystem.GetGraphicsQualityPreset();
+                if (ImGui::MenuItem(
+                        "Performance",
+                        nullptr,
+                        currentPreset == Pragma::Core::GraphicsQualityPreset::Performance))
+                {
+                    renderSystem.SetGraphicsQualityPreset(Pragma::Core::GraphicsQualityPreset::Performance);
+                    PushNotification("Graphics quality set to Performance.");
+                }
+
+                if (ImGui::MenuItem(
+                        "Balanced",
+                        nullptr,
+                        currentPreset == Pragma::Core::GraphicsQualityPreset::Balanced))
+                {
+                    renderSystem.SetGraphicsQualityPreset(Pragma::Core::GraphicsQualityPreset::Balanced);
+                    PushNotification("Graphics quality set to Balanced.");
+                }
+
+                if (ImGui::MenuItem(
+                        "Quality",
+                        nullptr,
+                        currentPreset == Pragma::Core::GraphicsQualityPreset::Quality))
+                {
+                    renderSystem.SetGraphicsQualityPreset(Pragma::Core::GraphicsQualityPreset::Quality);
+                    PushNotification("Graphics quality set to Quality.");
+                }
+
+                if (ImGui::MenuItem(
+                        "Custom",
+                        nullptr,
+                        currentPreset == Pragma::Core::GraphicsQualityPreset::Custom))
+                {
+                    Pragma::Core::GraphicsConfig graphicsConfig = renderSystem.GetGraphicsConfig();
+                    graphicsConfig.QualityPreset = Pragma::Core::GraphicsQualityPreset::Custom;
+                    renderSystem.ApplyGraphicsConfig(graphicsConfig);
+                    PushNotification("Graphics quality switched to Custom.");
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
+            ImGui::TextDisabled("Renderer");
+            ImGui::Text("Preset: %s", Pragma::Core::ToString(renderSystem.GetLastFrameStatistics().QualityPreset));
+            ImGui::Text("Internal Scale: %.2f", renderSystem.GetLastFrameStatistics().RenderScale);
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Tools"))
         {
+            if (ImGui::MenuItem("Build Managed Scripts"))
+            {
+                m_buildManagedScriptsRequested = true;
+            }
+
+            if (ImGui::MenuItem("Build + Reload Managed Scripts"))
+            {
+                m_buildAndReloadManagedScriptsRequested = true;
+            }
+
+            if (ImGui::MenuItem("Reload Managed Scripts"))
+            {
+                m_reloadManagedScriptsRequested = true;
+            }
+            ImGui::Separator();
             ImGui::MenuItem("Diagnostics", nullptr, &showDiagnosticsWindow);
             ImGui::MenuItem("Profiler", nullptr, &showProfilerWindow);
             ImGui::MenuItem("Log Console", nullptr, &showLogConsoleWindow);
@@ -527,6 +672,9 @@ void EditorUI::BeginFrame(
         ImGui::Begin("Editor", &m_showEditorWindow);
         const std::string documentPath = demoScene.GetDocumentPath().string();
         ImGui::TextWrapped("Document: %s", documentPath.empty() ? "<none>" : documentPath.c_str());
+        ImGui::TextWrapped(
+            "Scene Asset: %s",
+            demoScene.GetCurrentSceneAssetId().Value.empty() ? "<none>" : demoScene.GetCurrentSceneAssetId().Value.c_str());
         ImGui::Text("Dirty: %s", demoScene.IsDocumentDirty() ? "Yes" : "No");
         ImGui::TextWrapped(
             "Last Action: %s",
@@ -581,6 +729,27 @@ void EditorUI::BeginFrame(
             m_reloadSceneRequested = true;
         }
 
+        ImGui::SameLine();
+        if (ImGui::Button("Reload Managed"))
+        {
+            m_reloadManagedScriptsRequested = true;
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Build Managed"))
+        {
+            m_buildManagedScriptsRequested = true;
+        }
+
+        ImGui::SameLine();
+        ImGui::Text(
+            "Managed: %s",
+            m_lastManagedAction.empty() ? "None" : m_lastManagedAction.c_str());
+        if (!m_lastManagedActionDetail.empty())
+        {
+            ImGui::TextWrapped("%s", m_lastManagedActionDetail.c_str());
+        }
+
         if (ImGui::Button("Create"))
         {
             OpenCreateObjectDialog(Pragma::Core::SceneObjectTemplate::Empty, Pragma::Renderer::InvalidEntityId);
@@ -589,6 +758,137 @@ void EditorUI::BeginFrame(
         ImGui::SameLine();
         ImGui::TextDisabled("Ctrl+Z / Ctrl+Y");
         ImGui::End();
+    }
+
+    if (m_showSettingsWindow)
+    {
+        ImGui::SetNextWindowSize(ImVec2(520.0f, 560.0f), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Settings", &m_showSettingsWindow))
+        {
+            if (ImGui::BeginTabBar("SettingsTabs"))
+            {
+                if (ImGui::BeginTabItem("Graphics"))
+                {
+                    Pragma::Core::GraphicsConfig graphicsConfig = renderSystem.GetGraphicsConfig();
+                    bool graphicsConfigChanged = false;
+
+                    int graphicsQualityPreset = static_cast<int>(graphicsConfig.QualityPreset);
+                    if (ImGui::Combo("Preset", &graphicsQualityPreset, "Performance\0Balanced\0Quality\0Custom\0"))
+                    {
+                        const auto selectedPreset = static_cast<Pragma::Core::GraphicsQualityPreset>(graphicsQualityPreset);
+                        if (selectedPreset == Pragma::Core::GraphicsQualityPreset::Custom)
+                        {
+                            graphicsConfig.QualityPreset = Pragma::Core::GraphicsQualityPreset::Custom;
+                            renderSystem.ApplyGraphicsConfig(graphicsConfig);
+                            PushNotification("Graphics quality switched to Custom.");
+                        }
+                        else
+                        {
+                            renderSystem.SetGraphicsQualityPreset(selectedPreset);
+                            PushNotification(
+                                std::string("Graphics quality set to ") +
+                                Pragma::Core::ToString(selectedPreset) +
+                                ".");
+                            graphicsConfig = renderSystem.GetGraphicsConfig();
+                        }
+                    }
+
+                    ImGui::TextDisabled("Manual changes below are applied immediately and switch the preset to Custom.");
+
+                    if (ImGui::CollapsingHeader("General", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        int shadingQuality = static_cast<int>(graphicsConfig.ShadingQuality);
+                        if (ImGui::Combo("Shading Quality", &shadingQuality, "Performance\0Balanced\0Quality\0"))
+                        {
+                            graphicsConfig.ShadingQuality = static_cast<Pragma::Core::ShadingQualityTier>(shadingQuality);
+                            graphicsConfigChanged = true;
+                        }
+                        graphicsConfigChanged |= ImGui::SliderFloat("Render Scale", &graphicsConfig.RenderScale, 0.50f, 1.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Exposure", &graphicsConfig.Exposure, 0.25f, 4.00f, "%.2f");
+                    }
+
+                    if (ImGui::CollapsingHeader("Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        graphicsConfigChanged |= ImGui::SliderFloat("Ambient Strength", &graphicsConfig.AmbientStrength, 0.00f, 2.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Env Diffuse", &graphicsConfig.EnvironmentDiffuseStrength, 0.00f, 2.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Env Specular", &graphicsConfig.EnvironmentSpecularStrength, 0.00f, 2.50f, "%.2f");
+                    }
+
+                    if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        int shadowQuality = static_cast<int>(graphicsConfig.ShadowQuality);
+                        if (ImGui::Combo("Shadow Quality", &shadowQuality, "Low\0Medium\0High\0Ultra\0"))
+                        {
+                            graphicsConfig.ShadowQuality = static_cast<Pragma::Core::ShadowQualityTier>(shadowQuality);
+                            graphicsConfigChanged = true;
+                        }
+                        graphicsConfigChanged |= ImGui::SliderFloat("Shadow Filter", &graphicsConfig.ShadowFilterQuality, 0.00f, 1.00f, "%.2f");
+                    }
+
+                    if (ImGui::CollapsingHeader("Post Processing", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        graphicsConfigChanged |= ImGui::Checkbox("Bloom Enabled", &graphicsConfig.BloomEnabled);
+                        graphicsConfigChanged |= ImGui::SliderFloat("Bloom Scale", &graphicsConfig.BloomResolutionScale, 0.125f, 0.50f, "%.3f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Bloom Quality", &graphicsConfig.BloomQuality, 0.00f, 2.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Bloom Threshold", &graphicsConfig.BloomThreshold, 0.50f, 4.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Bloom Intensity", &graphicsConfig.BloomIntensity, 0.00f, 1.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::Checkbox("FXAA Enabled", &graphicsConfig.FxaaEnabled);
+                        graphicsConfigChanged |= ImGui::SliderFloat("FXAA Subpixel", &graphicsConfig.FxaaSubpixel, 0.00f, 1.00f, "%.2f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("FXAA Edge Threshold", &graphicsConfig.FxaaEdgeThreshold, 0.0312f, 0.333f, "%.3f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("FXAA Edge Threshold Min", &graphicsConfig.FxaaEdgeThresholdMin, 0.000f, 0.125f, "%.3f");
+                    }
+
+                    if (ImGui::CollapsingHeader("Fog", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        graphicsConfigChanged |= ImGui::SliderFloat("Fog Start", &graphicsConfig.FogStartDistance, 0.0f, 256.0f, "%.1f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Fog Density", &graphicsConfig.FogDensity, 0.0f, 0.25f, "%.3f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Fog Height Falloff", &graphicsConfig.FogHeightFalloff, 0.0f, 0.5f, "%.3f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Fog Max Opacity", &graphicsConfig.FogMaxOpacity, 0.0f, 1.0f, "%.2f");
+                    }
+
+                    if (ImGui::CollapsingHeader("LOD", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        graphicsConfigChanged |= ImGui::Checkbox("LOD Enabled", &graphicsConfig.LodEnabled);
+                        graphicsConfigChanged |= ImGui::SliderFloat("LOD Near Distance", &graphicsConfig.LodNearNormalizedDistance, 0.1f, 128.0f, "%.1f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("LOD Far Distance", &graphicsConfig.LodFarNormalizedDistance, 0.2f, 256.0f, "%.1f");
+                        graphicsConfigChanged |= ImGui::SliderFloat("Shadow Low LOD Scale", &graphicsConfig.ShadowLowLodDistanceScale, 0.10f, 2.00f, "%.2f");
+                    }
+
+                    if (graphicsConfigChanged)
+                    {
+                        graphicsConfig.QualityPreset = Pragma::Core::GraphicsQualityPreset::Custom;
+                        renderSystem.ApplyGraphicsConfig(graphicsConfig);
+                    }
+
+                    const Pragma::Renderer::RenderStatistics& renderStats = renderSystem.GetLastFrameStatistics();
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Runtime Snapshot");
+                    ImGui::Text("Preset: %s", Pragma::Core::ToString(renderStats.QualityPreset));
+                    ImGui::Text("Shading Quality: %s", Pragma::Core::ToString(renderStats.ShadingQuality));
+                    ImGui::Text("Render Scale: %.2f", renderStats.RenderScale);
+                    ImGui::Text("Internal Render: %ux%u", renderStats.InternalRenderWidth, renderStats.InternalRenderHeight);
+                    ImGui::Text("Shadow Map: %ux%u", renderStats.ShadowMapResolution, renderStats.ShadowMapResolution);
+                    ImGui::Text(
+                        "Bloom Target: %ux%u (scale %.3f)",
+                        renderStats.BloomResolutionWidth,
+                        renderStats.BloomResolutionHeight,
+                        renderStats.BloomResolutionScale);
+                    ImGui::Text("Anti-Aliasing: %s", renderStats.FxaaEnabled ? "FXAA" : "Off");
+                    ImGui::Text(
+                        "Draws: %llu total (%llu main, %llu shadow, %llu bloom, %llu tonemap)",
+                        static_cast<unsigned long long>(renderStats.TotalDrawCalls),
+                        static_cast<unsigned long long>(renderStats.MainPassDrawCalls),
+                        static_cast<unsigned long long>(renderStats.ShadowPassDrawCalls),
+                        static_cast<unsigned long long>(renderStats.BloomDrawCalls),
+                        static_cast<unsigned long long>(renderStats.TonemapDrawCalls));
+                    ImGui::TextDisabled("Use Diagnostics for the full render and GPU breakdown.");
+
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+            ImGui::End();
+        }
     }
 
     if (m_showHierarchyWindow)
@@ -869,6 +1169,8 @@ void EditorUI::BeginFrame(
         ImGui::SameLine();
         ImGui::Checkbox("Local Space", &m_useLocalGizmoSpace);
         ImGui::Checkbox("Physics Overlay", &m_showPhysicsOverlay);
+        ImGui::SameLine();
+        ImGui::Checkbox("LOD Overlay", &m_showLodOverlay);
 
         ImGui::Separator();
 
@@ -1440,7 +1742,88 @@ void EditorUI::BeginFrame(
             if (selectedObject->HasMeshRenderer() && ImGui::CollapsingHeader("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 const Pragma::Renderer::MeshRendererComponent* meshRenderer = selectedObject->GetMeshRenderer();
+                const std::vector<std::string> meshAssetNames = demoScene.GetAvailableMeshAssetNames();
                 ImGui::Text("Mesh: %s", meshRenderer->Mesh != nullptr ? "Assigned" : "Missing");
+                ImGui::TextWrapped(
+                    "Mesh Asset: %s",
+                    meshRenderer->MeshAssetId.empty() ? "<None>" : meshRenderer->MeshAssetId.Value.c_str());
+                if (!meshAssetNames.empty() && ImGui::BeginCombo("Mesh Asset", meshRenderer->MeshAssetId.empty() ? "<None>" : meshRenderer->MeshAssetId.Value.c_str()))
+                {
+                    for (const std::string& meshAssetName : meshAssetNames)
+                    {
+                        const bool selected = meshAssetName == meshRenderer->MeshAssetId.Value;
+                        if (ImGui::Selectable(meshAssetName.c_str(), selected))
+                        {
+                            m_meshRequest.Entity = selectedObject->Id;
+                            m_meshRequest.Slot = Pragma::Renderer::MeshLodSlot::Base;
+                            m_meshRequest.MeshAssetName = meshAssetName;
+                            m_meshRequest.Pending = true;
+                        }
+                        if (selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::TextWrapped(
+                    "LOD1 Mesh Asset: %s",
+                    meshRenderer->MediumLodMeshAssetId.empty() ? "<None>" : meshRenderer->MediumLodMeshAssetId.Value.c_str());
+                if (ImGui::BeginCombo("LOD1 Mesh Asset", meshRenderer->MediumLodMeshAssetId.empty() ? "<None>" : meshRenderer->MediumLodMeshAssetId.Value.c_str()))
+                {
+                    if (ImGui::Selectable("<None>", meshRenderer->MediumLodMeshAssetId.empty()))
+                    {
+                        m_meshRequest.Entity = selectedObject->Id;
+                        m_meshRequest.Slot = Pragma::Renderer::MeshLodSlot::Lod1;
+                        m_meshRequest.MeshAssetName.clear();
+                        m_meshRequest.Pending = true;
+                    }
+                    for (const std::string& meshAssetName : meshAssetNames)
+                    {
+                        const bool selected = meshAssetName == meshRenderer->MediumLodMeshAssetId.Value;
+                        if (ImGui::Selectable(meshAssetName.c_str(), selected))
+                        {
+                            m_meshRequest.Entity = selectedObject->Id;
+                            m_meshRequest.Slot = Pragma::Renderer::MeshLodSlot::Lod1;
+                            m_meshRequest.MeshAssetName = meshAssetName;
+                            m_meshRequest.Pending = true;
+                        }
+                        if (selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::TextWrapped(
+                    "LOD2 Mesh Asset: %s",
+                    meshRenderer->LowLodMeshAssetId.empty() ? "<None>" : meshRenderer->LowLodMeshAssetId.Value.c_str());
+                if (ImGui::BeginCombo("LOD2 Mesh Asset", meshRenderer->LowLodMeshAssetId.empty() ? "<None>" : meshRenderer->LowLodMeshAssetId.Value.c_str()))
+                {
+                    if (ImGui::Selectable("<None>", meshRenderer->LowLodMeshAssetId.empty()))
+                    {
+                        m_meshRequest.Entity = selectedObject->Id;
+                        m_meshRequest.Slot = Pragma::Renderer::MeshLodSlot::Lod2;
+                        m_meshRequest.MeshAssetName.clear();
+                        m_meshRequest.Pending = true;
+                    }
+                    for (const std::string& meshAssetName : meshAssetNames)
+                    {
+                        const bool selected = meshAssetName == meshRenderer->LowLodMeshAssetId.Value;
+                        if (ImGui::Selectable(meshAssetName.c_str(), selected))
+                        {
+                            m_meshRequest.Entity = selectedObject->Id;
+                            m_meshRequest.Slot = Pragma::Renderer::MeshLodSlot::Lod2;
+                            m_meshRequest.MeshAssetName = meshAssetName;
+                            m_meshRequest.Pending = true;
+                        }
+                        if (selected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
                 ImGui::Text("Material: %s", meshRenderer->Material != nullptr ? "Assigned" : "Missing");
                 ImGui::TextWrapped(
                     "Material Asset: %s",
@@ -1519,11 +1902,54 @@ void EditorUI::BeginFrame(
                 const auto* managedScript = selectedObject->GetManagedScript();
                 if (managedScript != nullptr)
                 {
+                    const auto managedProjects = demoScene.GetManagedScriptProjects();
+                    const auto managedScriptTypes = demoScene.GetAvailableManagedScripts();
+                    const Pragma::Scripting::ManagedScriptProject* projectIt =
+                        FindManagedProject(managedProjects, managedScript->GetProjectAssetId().Value);
+                    const Pragma::Scripting::ManagedScriptTypeMetadata* typeIt =
+                        FindManagedScriptType(
+                            managedScriptTypes,
+                            managedScript->GetProjectAssetId().Value,
+                            managedScript->GetTypeName());
+
                     ImGui::TextWrapped("Project: %s", managedScript->GetProjectAssetId().Value.c_str());
                     ImGui::TextWrapped("Type: %s", managedScript->GetTypeName().c_str());
+                    ImGui::Text("Lifecycle: %s", ToManagedLifecycleLabel(managedScript->GetLifecycleState()));
+                    ImGui::Text("Instance Handle: %d", managedScript->GetInstanceHandle());
+                    ImGui::Text("Last Call: %s", managedScript->WasLastCallSuccessful() ? "OK" : "Failed or not run");
+                    ImGui::Text("Update Count: %llu", static_cast<unsigned long long>(managedScript->GetUpdateCount()));
+                    ImGui::Text("Last Frame: %llu", static_cast<unsigned long long>(managedScript->GetLastUpdatedFrame()));
                     if (!managedScript->GetLastStatus().empty())
                     {
                         ImGui::TextWrapped("Status: %s", managedScript->GetLastStatus().c_str());
+                    }
+                    if (projectIt != nullptr)
+                    {
+                        ImGui::Separator();
+                        ImGui::Text("Project Exists: %s", projectIt->Exists ? "Yes" : "No");
+                        ImGui::Text("Runtime Ready: %s", projectIt->RuntimeReady ? "Yes" : "No");
+                        ImGui::Text("Script API Ready: %s", projectIt->ScriptApiReady ? "Yes" : "No");
+                        ImGui::Text("Type Registered: %s", typeIt != nullptr ? "Yes" : "No");
+                        if (!projectIt->Exists || !projectIt->RuntimeReady || !projectIt->ScriptApiReady)
+                        {
+                            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Managed project is not fully ready.");
+                        }
+                        if (typeIt == nullptr)
+                        {
+                            ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Assigned managed type is not present in the current script catalog.");
+                        }
+                        if (!projectIt->AssemblyPath.empty())
+                        {
+                            ImGui::TextWrapped("Assembly: %s", projectIt->AssemblyPath.string().c_str());
+                        }
+                        if (!projectIt->RuntimeStatus.empty())
+                        {
+                            ImGui::TextWrapped("Runtime: %s", projectIt->RuntimeStatus.c_str());
+                        }
+                        if (!projectIt->ScriptApiStatus.empty())
+                        {
+                            ImGui::TextWrapped("API: %s", projectIt->ScriptApiStatus.c_str());
+                        }
                     }
 
                     if (ImGui::Button("Clear Managed Script"))
@@ -1612,27 +2038,79 @@ void EditorUI::BeginFrame(
             if (!selectedObject->HasBehaviour())
             {
                 const std::vector<Pragma::Scripting::ManagedScriptTypeMetadata> managedScripts = demoScene.GetAvailableManagedScripts();
+                const std::vector<Pragma::Scripting::ManagedScriptProject>& managedProjects = demoScene.GetManagedScriptProjects();
+                int readyManagedScriptCount = 0;
+                for (const Pragma::Scripting::ManagedScriptTypeMetadata& metadata : managedScripts)
+                {
+                    const Pragma::Scripting::ManagedScriptProject* project = FindManagedProject(managedProjects, metadata.ProjectAsset.Value);
+                    if (project != nullptr && project->Exists && project->RuntimeReady && project->ScriptApiReady)
+                    {
+                        ++readyManagedScriptCount;
+                    }
+                }
+
                 if (!managedScripts.empty() && ImGui::BeginCombo("Add Managed Script", "Select Managed Script"))
                 {
                     for (const Pragma::Scripting::ManagedScriptTypeMetadata& metadata : managedScripts)
                     {
-                        if (ImGui::Selectable(metadata.DisplayName.c_str(), false))
+                        const Pragma::Scripting::ManagedScriptProject* project = FindManagedProject(managedProjects, metadata.ProjectAsset.Value);
+                        const bool projectReady = project != nullptr && project->Exists && project->RuntimeReady && project->ScriptApiReady;
+                        std::string label = metadata.DisplayName + " [" + metadata.ProjectAsset.Value + "]";
+                        if (!projectReady)
+                        {
+                            ImGui::BeginDisabled();
+                        }
+                        if (ImGui::Selectable(label.c_str(), false))
                         {
                             m_managedScriptRequest.Entity = selectedObject->Id;
                             m_managedScriptRequest.ProjectAssetName = metadata.ProjectAsset.Value;
                             m_managedScriptRequest.TypeName = metadata.TypeName;
                             m_managedScriptRequest.Pending = true;
                         }
-                        if (ImGui::IsItemHovered() && !metadata.Description.empty())
+                        if (!projectReady)
                         {
-                            ImGui::SetTooltip(
-                                "%s\n%s\n%s",
-                                metadata.ProjectAsset.Value.c_str(),
-                                metadata.TypeName.c_str(),
-                                metadata.Description.c_str());
+                            ImGui::EndDisabled();
+                        }
+                        if (ImGui::IsItemHovered())
+                        {
+                            std::string tooltip =
+                                metadata.ProjectAsset.Value + "\n" +
+                                metadata.TypeName;
+                            if (!metadata.Description.empty())
+                            {
+                                tooltip += "\n" + metadata.Description;
+                            }
+                            if (project == nullptr)
+                            {
+                                tooltip += "\nProject metadata is missing.";
+                            }
+                            else
+                            {
+                                tooltip += "\nRuntime: " + project->RuntimeStatus;
+                                tooltip += "\nAPI: " + project->ScriptApiStatus;
+                            }
+                            ImGui::SetTooltip("%s", tooltip.c_str());
                         }
                     }
                     ImGui::EndCombo();
+                }
+
+                if (!managedScripts.empty())
+                {
+                    ImGui::Text("Managed Types Ready: %d / %llu", readyManagedScriptCount, static_cast<unsigned long long>(managedScripts.size()));
+                    if (readyManagedScriptCount == 0)
+                    {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "No managed script types are ready yet.");
+                        if (ImGui::SmallButton("Build Managed##Inspector"))
+                        {
+                            m_buildManagedScriptsRequested = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Build + Reload##Inspector"))
+                        {
+                            m_buildAndReloadManagedScriptsRequested = true;
+                        }
+                    }
                 }
             }
 
@@ -1709,6 +2187,40 @@ void EditorUI::BeginFrame(
             if (hasMaterialSelection)
             {
                 const std::filesystem::path materialPath = demoScene.ResolveAssetPath({ m_selectedMaterialAssetName });
+                auto drawTextureAssetCombo =
+                    [&](const char* label, Pragma::Assets::AssetId& assetId)
+                {
+                    const char* currentTextureLabel = assetId.empty()
+                        ? "<None>"
+                        : assetId.Value.c_str();
+                    if (ImGui::BeginCombo(label, currentTextureLabel))
+                    {
+                        const bool noneSelected = assetId.empty();
+                        if (ImGui::Selectable("<None>", noneSelected))
+                        {
+                            assetId = {};
+                        }
+                        if (noneSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+
+                        for (const std::string& textureAssetName : textureAssetNames)
+                        {
+                            const bool selected = textureAssetName == assetId.Value;
+                            if (ImGui::Selectable(textureAssetName.c_str(), selected))
+                            {
+                                assetId = { textureAssetName };
+                            }
+                            if (selected)
+                            {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                };
+
                 ImGui::Separator();
                 ImGui::TextWrapped("Selected: %s", m_selectedMaterialAssetName.c_str());
                 ImGui::TextWrapped("Path: %s", materialPath.string().c_str());
@@ -1728,38 +2240,33 @@ void EditorUI::BeginFrame(
                     }
                 }
 
-                ImGui::DragFloat("Roughness", &m_materialEditorData.Roughness, 0.01f, 0.0f, 1.0f);
-                ImGui::Checkbox("Use Albedo Texture", &m_materialEditorData.UseAlbedoTexture);
-
-                const char* currentTextureLabel = m_materialEditorData.AlbedoTextureAsset.empty()
-                    ? "<None>"
-                    : m_materialEditorData.AlbedoTextureAsset.Value.c_str();
-                if (ImGui::BeginCombo("Albedo Texture", currentTextureLabel))
+                float emissiveColor[3]
                 {
-                    const bool noneSelected = m_materialEditorData.AlbedoTextureAsset.empty();
-                    if (ImGui::Selectable("<None>", noneSelected))
+                    m_materialEditorData.EmissiveColor[0],
+                    m_materialEditorData.EmissiveColor[1],
+                    m_materialEditorData.EmissiveColor[2]
+                };
+                if (ImGui::ColorEdit3("Emissive Color", emissiveColor))
+                {
+                    for (std::size_t i = 0; i < 3; ++i)
                     {
-                        m_materialEditorData.AlbedoTextureAsset = {};
+                        m_materialEditorData.EmissiveColor[i] = emissiveColor[i];
                     }
-                    if (noneSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-
-                    for (const std::string& textureAssetName : textureAssetNames)
-                    {
-                        const bool selected = textureAssetName == m_materialEditorData.AlbedoTextureAsset.Value;
-                        if (ImGui::Selectable(textureAssetName.c_str(), selected))
-                        {
-                            m_materialEditorData.AlbedoTextureAsset = { textureAssetName };
-                        }
-                        if (selected)
-                        {
-                            ImGui::SetItemDefaultFocus();
-                        }
-                    }
-                    ImGui::EndCombo();
                 }
+
+                ImGui::DragFloat("Roughness", &m_materialEditorData.Roughness, 0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("Metallic", &m_materialEditorData.Metallic, 0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("Ambient Occlusion", &m_materialEditorData.AmbientOcclusion, 0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emissive Intensity", &m_materialEditorData.EmissiveIntensity, 0.01f, 0.0f, 8.0f);
+                ImGui::Checkbox("Use Albedo Texture", &m_materialEditorData.UseAlbedoTexture);
+                drawTextureAssetCombo("Albedo Texture", m_materialEditorData.AlbedoTextureAsset);
+                ImGui::Checkbox("Use Normal Texture", &m_materialEditorData.UseNormalTexture);
+                ImGui::DragFloat("Normal Strength", &m_materialEditorData.NormalStrength, 0.01f, 0.0f, 4.0f);
+                drawTextureAssetCombo("Normal Texture", m_materialEditorData.NormalTextureAsset);
+                ImGui::Checkbox("Use ORM Texture", &m_materialEditorData.UseOrmTexture);
+                drawTextureAssetCombo("ORM Texture", m_materialEditorData.OrmTextureAsset);
+                ImGui::Checkbox("Use Emissive Texture", &m_materialEditorData.UseEmissiveTexture);
+                drawTextureAssetCombo("Emissive Texture", m_materialEditorData.EmissiveTextureAsset);
             }
             else
             {
@@ -2029,6 +2536,328 @@ void EditorUI::BeginFrame(
         }
     }
 
+    if (m_showManagedScriptsWindow)
+    {
+        ImGui::SetNextWindowSize(ImVec2(420.0f, 360.0f), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Managed Scripts", &m_showManagedScriptsWindow))
+        {
+            const Pragma::Core::ManagedBuildStatus& managedBuildStatus = demoScene.GetManagedBuildStatus();
+            int managedInstanceCount = 0;
+            int managedFailedCount = 0;
+            for (const Pragma::Renderer::SceneObject& object : scene.GetObjects())
+            {
+                const auto* managedScript = object.GetManagedScript();
+                if (managedScript == nullptr)
+                {
+                    continue;
+                }
+
+                ++managedInstanceCount;
+                if (managedScript->GetLifecycleState() == Pragma::Renderer::ManagedScriptComponent::LifecycleState::Failed)
+                {
+                    ++managedFailedCount;
+                }
+            }
+
+            ImGui::Text("Managed Instances: %d", managedInstanceCount);
+            ImGui::Text("Failed Instances: %d", managedFailedCount);
+            ImGui::Checkbox("Failed Only", &m_showManagedFailedOnly);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Build"))
+            {
+                m_buildManagedScriptsRequested = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Build + Reload"))
+            {
+                m_buildAndReloadManagedScriptsRequested = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reload"))
+            {
+                m_reloadManagedScriptsRequested = true;
+            }
+            if (managedBuildStatus.HasRun)
+            {
+                ImGui::TextWrapped(
+                    "Last Build: %s (Exit Code: %d)",
+                    managedBuildStatus.Succeeded ? "Success" : "Failed",
+                    managedBuildStatus.ExitCode);
+                if (!managedBuildStatus.Summary.empty())
+                {
+                    ImGui::TextWrapped("%s", managedBuildStatus.Summary.c_str());
+                }
+            }
+            if (!m_lastManagedAction.empty())
+            {
+                ImGui::Separator();
+                ImGui::Text("Last Managed Action: %s", m_lastManagedAction.c_str());
+                if (!m_lastManagedActionDetail.empty())
+                {
+                    ImGui::TextWrapped("%s", m_lastManagedActionDetail.c_str());
+                }
+            }
+            ImGui::Separator();
+
+            bool anyManagedInstance = false;
+            bool anyVisibleManagedInstance = false;
+            for (const Pragma::Renderer::SceneObject& object : scene.GetObjects())
+            {
+                const auto* managedScript = object.GetManagedScript();
+                if (managedScript == nullptr)
+                {
+                    continue;
+                }
+
+                anyManagedInstance = true;
+                const bool selected = m_selectedObjectId == object.Id;
+                const bool failed = managedScript->GetLifecycleState() == Pragma::Renderer::ManagedScriptComponent::LifecycleState::Failed;
+                if (m_showManagedFailedOnly && !failed)
+                {
+                    continue;
+                }
+
+                const auto managedProjects = demoScene.GetManagedScriptProjects();
+                const auto managedScriptTypes = demoScene.GetAvailableManagedScripts();
+                const Pragma::Scripting::ManagedScriptProject* projectIt =
+                    FindManagedProject(managedProjects, managedScript->GetProjectAssetId().Value);
+                const Pragma::Scripting::ManagedScriptTypeMetadata* typeIt =
+                    FindManagedScriptType(
+                        managedScriptTypes,
+                        managedScript->GetProjectAssetId().Value,
+                        managedScript->GetTypeName());
+                const bool projectReady = projectIt != nullptr && projectIt->RuntimeReady && projectIt->ScriptApiReady;
+                const bool projectMissing = projectIt == nullptr || !projectIt->Exists;
+                const bool typeMissing = typeIt == nullptr;
+                const bool attentionNeeded = failed || !projectReady || projectMissing || typeMissing;
+                anyVisibleManagedInstance = true;
+
+                std::string displayName = object.Name + "##managed_" + std::to_string(object.Id);
+                if (attentionNeeded)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, failed ? IM_COL32(255, 120, 120, 255) : IM_COL32(255, 215, 120, 255));
+                }
+                if (ImGui::Selectable(displayName.c_str(), selected))
+                {
+                    m_selectedObjectId = object.Id;
+                }
+                if (attentionNeeded)
+                {
+                    ImGui::PopStyleColor();
+                }
+
+                ImGui::Indent();
+                ImGui::Text("EntityId: %llu", static_cast<unsigned long long>(object.Id));
+                ImGui::TextWrapped("Project: %s", managedScript->GetProjectAssetId().Value.c_str());
+                ImGui::TextWrapped("Type: %s", managedScript->GetTypeName().c_str());
+                ImGui::Text("Lifecycle: %s", ToManagedLifecycleLabel(managedScript->GetLifecycleState()));
+                ImGui::Text("Handle: %d", managedScript->GetInstanceHandle());
+                ImGui::Text("Updates: %llu", static_cast<unsigned long long>(managedScript->GetUpdateCount()));
+                ImGui::Text("Last Frame: %llu", static_cast<unsigned long long>(managedScript->GetLastUpdatedFrame()));
+                ImGui::Text("Project Ready: %s", projectReady ? "Yes" : "No");
+                ImGui::Text("Type Registered: %s", typeMissing ? "No" : "Yes");
+                if (!managedScript->GetLastStatus().empty())
+                {
+                    ImGui::TextWrapped("Status: %s", managedScript->GetLastStatus().c_str());
+                }
+                if (typeMissing)
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Assigned managed type is missing from the current catalog.");
+                }
+                if (projectIt != nullptr)
+                {
+                    if (!projectIt->RuntimeStatus.empty())
+                    {
+                        ImGui::TextWrapped("Runtime: %s", projectIt->RuntimeStatus.c_str());
+                    }
+                    if (!projectIt->ScriptApiStatus.empty())
+                    {
+                        ImGui::TextWrapped("API: %s", projectIt->ScriptApiStatus.c_str());
+                    }
+                    if (!projectIt->AssemblyPath.empty())
+                    {
+                        ImGui::TextWrapped("Assembly: %s", projectIt->AssemblyPath.string().c_str());
+                    }
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Project metadata not found.");
+                }
+                ImGui::Unindent();
+                ImGui::Separator();
+            }
+
+            if (!anyManagedInstance)
+            {
+                ImGui::TextDisabled("No managed script instances in the current scene.");
+            }
+            else if (!anyVisibleManagedInstance)
+            {
+                ImGui::TextDisabled("No managed script instances match the current filter.");
+            }
+            ImGui::End();
+        }
+    }
+
+    if (m_showManagedProjectsWindow)
+    {
+        ImGui::SetNextWindowSize(ImVec2(520.0f, 420.0f), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Managed Projects", &m_showManagedProjectsWindow))
+        {
+            const auto& managedProjects = demoScene.GetManagedScriptProjects();
+            const Pragma::Core::ManagedBuildStatus& managedBuildStatus = demoScene.GetManagedBuildStatus();
+
+            int readyProjectCount = 0;
+            int missingProjectCount = 0;
+            int apiProblemCount = 0;
+            for (const auto& project : managedProjects)
+            {
+                if (!project.Exists)
+                {
+                    ++missingProjectCount;
+                }
+                if (project.Exists && project.RuntimeReady && project.ScriptApiReady)
+                {
+                    ++readyProjectCount;
+                }
+                if (project.Exists && (!project.RuntimeReady || !project.ScriptApiReady))
+                {
+                    ++apiProblemCount;
+                }
+            }
+
+            ImGui::Text("Projects: %llu", static_cast<unsigned long long>(managedProjects.size()));
+            ImGui::Text("Ready: %d", readyProjectCount);
+            ImGui::Text("Missing: %d", missingProjectCount);
+            ImGui::Text("Need Attention: %d", apiProblemCount);
+            ImGui::Separator();
+            if (ImGui::Button("Build Managed Projects"))
+            {
+                m_buildManagedScriptsRequested = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Build + Reload Managed Projects"))
+            {
+                m_buildAndReloadManagedScriptsRequested = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Reload Managed Runtime"))
+            {
+                m_reloadManagedScriptsRequested = true;
+            }
+            if (managedBuildStatus.HasRun)
+            {
+                ImGui::TextWrapped(
+                    "Last Build: %s (Exit Code: %d)",
+                    managedBuildStatus.Succeeded ? "Success" : "Failed",
+                    managedBuildStatus.ExitCode);
+                if (!managedBuildStatus.Summary.empty())
+                {
+                    ImGui::TextWrapped("%s", managedBuildStatus.Summary.c_str());
+                }
+            }
+            if (!m_lastManagedAction.empty())
+            {
+                ImGui::TextWrapped(
+                    "Last Managed Action: %s%s%s",
+                    m_lastManagedAction.c_str(),
+                    m_lastManagedActionDetail.empty() ? "" : " | ",
+                    m_lastManagedActionDetail.empty() ? "" : m_lastManagedActionDetail.c_str());
+            }
+            ImGui::Separator();
+
+            if (managedProjects.empty())
+            {
+                ImGui::TextDisabled("No managed projects registered in the current manifest.");
+            }
+            else
+            {
+                const auto managedScriptTypes = demoScene.GetAvailableManagedScripts();
+                for (const auto& project : managedProjects)
+                {
+                    int instanceCount = 0;
+                    int failedInstanceCount = 0;
+                    int missingTypeCount = 0;
+                    for (const Pragma::Renderer::SceneObject& object : scene.GetObjects())
+                    {
+                        const auto* managedScript = object.GetManagedScript();
+                        if (managedScript == nullptr || managedScript->GetProjectAssetId().Value != project.Asset.Value)
+                        {
+                            continue;
+                        }
+
+                        ++instanceCount;
+                        if (managedScript->GetLifecycleState() == Pragma::Renderer::ManagedScriptComponent::LifecycleState::Failed)
+                        {
+                            ++failedInstanceCount;
+                        }
+                        if (FindManagedScriptType(managedScriptTypes, project.Asset.Value, managedScript->GetTypeName()) == nullptr)
+                        {
+                            ++missingTypeCount;
+                        }
+                    }
+
+                    const bool ready = project.Exists && project.RuntimeReady && project.ScriptApiReady;
+                    const bool attentionNeeded = !ready || missingTypeCount > 0;
+                    ImGui::PushID(project.Asset.Value.c_str());
+                    if (attentionNeeded)
+                    {
+                        ImGui::PushStyleColor(
+                            ImGuiCol_Text,
+                            project.Exists ? IM_COL32(255, 215, 120, 255) : IM_COL32(255, 120, 120, 255));
+                    }
+                    ImGui::TextWrapped("%s", project.Asset.Value.c_str());
+                    if (attentionNeeded)
+                    {
+                        ImGui::PopStyleColor();
+                    }
+                    ImGui::Indent();
+                    ImGui::Text("Exists: %s", project.Exists ? "Yes" : "No");
+                    ImGui::Text("Runtime Ready: %s", project.RuntimeReady ? "Yes" : "No");
+                    ImGui::Text("Script API Ready: %s", project.ScriptApiReady ? "Yes" : "No");
+                    ImGui::Text("Registered Types: %llu", static_cast<unsigned long long>(std::count_if(
+                        managedScriptTypes.begin(),
+                        managedScriptTypes.end(),
+                        [&project](const Pragma::Scripting::ManagedScriptTypeMetadata& metadata)
+                        {
+                            return metadata.ProjectAsset.Value == project.Asset.Value;
+                        })));
+                    ImGui::Text("Scene Instances: %d", instanceCount);
+                    ImGui::Text("Failed Instances: %d", failedInstanceCount);
+                    ImGui::Text("Missing Types: %d", missingTypeCount);
+                    if (missingTypeCount > 0)
+                    {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f), "Some scene instances reference missing managed types.");
+                    }
+                    if (!project.Path.empty())
+                    {
+                        ImGui::TextWrapped("Project: %s", project.Path.string().c_str());
+                    }
+                    if (!project.RuntimeConfigPath.empty())
+                    {
+                        ImGui::TextWrapped("RuntimeConfig: %s", project.RuntimeConfigPath.string().c_str());
+                    }
+                    if (!project.AssemblyPath.empty())
+                    {
+                        ImGui::TextWrapped("Assembly: %s", project.AssemblyPath.string().c_str());
+                    }
+                    if (!project.RuntimeStatus.empty())
+                    {
+                        ImGui::TextWrapped("Runtime: %s", project.RuntimeStatus.c_str());
+                    }
+                    if (!project.ScriptApiStatus.empty())
+                    {
+                        ImGui::TextWrapped("Script API: %s", project.ScriptApiStatus.c_str());
+                    }
+                    ImGui::Unindent();
+                    ImGui::Separator();
+                    ImGui::PopID();
+                }
+            }
+            ImGui::End();
+        }
+    }
+
     if (m_showStatusWindow)
     {
         ImGui::SetNextWindowSize(ImVec2(520.0f, 64.0f), ImGuiCond_FirstUseEver);
@@ -2038,6 +2867,14 @@ void EditorUI::BeginFrame(
             ImGui::Text("Selection: %s", selectedObject != nullptr ? selectedObject->Name.c_str() : "None");
             ImGui::Text("Tool: %s", m_gizmoMode == GizmoMode::Move ? "Move" : (m_gizmoMode == GizmoMode::Rotate ? "Rotate" : "Scale"));
             ImGui::Text("Space: %s", m_useLocalGizmoSpace ? "Local" : "World");
+            ImGui::Text("Managed Action: %s", m_lastManagedAction.empty() ? "None" : m_lastManagedAction.c_str());
+            if (!m_lastManagedActionDetail.empty())
+            {
+                const ImVec4 color = m_lastManagedActionSucceeded
+                    ? ImVec4(0.70f, 0.90f, 0.70f, 1.0f)
+                    : ImVec4(1.00f, 0.70f, 0.70f, 1.0f);
+                ImGui::TextColored(color, "%s", m_lastManagedActionDetail.c_str());
+            }
             ImGui::End();
         }
     }
@@ -2206,12 +3043,66 @@ void EditorUI::ApplyPendingSceneActions(Pragma::Core::DemoScene& demoScene)
     if (m_managedScriptRequest.Pending)
     {
         m_managedScriptRequest.Pending = false;
-        if (demoScene.SetManagedScript(
+        const auto managedProjects = demoScene.GetManagedScriptProjects();
+        const auto managedScriptTypes = demoScene.GetAvailableManagedScripts();
+        const Pragma::Scripting::ManagedScriptProject* project =
+            FindManagedProject(managedProjects, m_managedScriptRequest.ProjectAssetName);
+        const Pragma::Scripting::ManagedScriptTypeMetadata* type =
+            FindManagedScriptType(
+                managedScriptTypes,
+                m_managedScriptRequest.ProjectAssetName,
+                m_managedScriptRequest.TypeName);
+        if (project == nullptr)
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Project metadata is missing.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed: project metadata is missing.", 5.0f);
+        }
+        else if (type == nullptr)
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Managed type is not present in the current script catalog.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed: type is missing from the current script catalog.", 5.0f);
+        }
+        else if (!project->Exists)
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Project asset is missing.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed: project asset is missing.", 5.0f);
+        }
+        else if (!project->RuntimeReady)
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Managed runtime is not ready.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed: managed runtime is not ready.", 5.0f);
+        }
+        else if (!project->ScriptApiReady)
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Managed script API is not ready.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed: managed script API is not ready.", 5.0f);
+        }
+        else if (demoScene.SetManagedScript(
             m_managedScriptRequest.Entity,
             { m_managedScriptRequest.ProjectAssetName },
             m_managedScriptRequest.TypeName))
         {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Assigned '" + m_managedScriptRequest.TypeName + "'.";
+            m_lastManagedActionSucceeded = true;
             PushNotification("Assigned managed script '" + m_managedScriptRequest.TypeName + "'.");
+        }
+        else
+        {
+            m_lastManagedAction = "Assign Managed Script";
+            m_lastManagedActionDetail = "Assignment failed.";
+            m_lastManagedActionSucceeded = false;
+            PushNotification("Managed script assignment failed.", 5.0f);
         }
         m_managedScriptRequest = {};
     }
@@ -2224,6 +3115,27 @@ void EditorUI::ApplyPendingSceneActions(Pragma::Core::DemoScene& demoScene)
             PushNotification("Assigned material '" + m_materialRequest.MaterialAssetName + "'.");
         }
         m_materialRequest = {};
+    }
+
+    if (m_meshRequest.Pending)
+    {
+        m_meshRequest.Pending = false;
+        if (demoScene.SetMeshAsset(m_meshRequest.Entity, m_meshRequest.Slot, { m_meshRequest.MeshAssetName }))
+        {
+            const char* slotLabel = "mesh";
+            if (m_meshRequest.Slot == Pragma::Renderer::MeshLodSlot::Lod1)
+            {
+                slotLabel = "LOD1 mesh";
+            }
+            else if (m_meshRequest.Slot == Pragma::Renderer::MeshLodSlot::Lod2)
+            {
+                slotLabel = "LOD2 mesh";
+            }
+
+            const std::string valueLabel = m_meshRequest.MeshAssetName.empty() ? "<None>" : m_meshRequest.MeshAssetName;
+            PushNotification("Assigned " + std::string(slotLabel) + " '" + valueLabel + "'.");
+        }
+        m_meshRequest = {};
     }
 
     if (m_materialAssetSaveRequest.Pending)
@@ -2330,6 +3242,81 @@ void EditorUI::ApplyPendingSceneActions(Pragma::Core::DemoScene& demoScene)
         }
         PushNotification("Scene reloaded.");
     }
+
+    if (m_sceneLoadRequest.Pending)
+    {
+        const std::string sceneAssetName = m_sceneLoadRequest.SceneAssetName;
+        m_sceneLoadRequest = {};
+        if (demoScene.LoadSceneAsset({ sceneAssetName }))
+        {
+            m_selectedObjectId = Pragma::Renderer::InvalidEntityId;
+            m_objectNameBufferEntityId = Pragma::Renderer::InvalidEntityId;
+            m_objectNameBuffer.fill('\0');
+            m_lastMaterialSyncEntityId = Pragma::Renderer::InvalidEntityId;
+            m_selectedMaterialAssetName.clear();
+            m_loadedMaterialEditorAssetName.clear();
+            PushNotification("Scene loaded: " + sceneAssetName);
+        }
+        else
+        {
+            PushNotification("Failed to load scene: " + sceneAssetName, 5.0f);
+        }
+    }
+
+    if (m_buildManagedScriptsRequested)
+    {
+        m_buildManagedScriptsRequested = false;
+        const bool buildSucceeded = demoScene.BuildManagedScripts();
+        const auto& buildStatus = demoScene.GetManagedBuildStatus();
+        m_lastManagedAction = "Build Managed Scripts";
+        m_lastManagedActionSucceeded = buildSucceeded;
+        m_lastManagedActionDetail = buildStatus.Summary + " ExitCode=" + std::to_string(buildStatus.ExitCode);
+        PushNotification(buildSucceeded ? "Managed scripts built." : "Managed scripts build failed.", buildSucceeded ? 3.0f : 5.0f);
+        if (!buildStatus.Summary.empty())
+        {
+            PushNotification(buildStatus.Summary, buildSucceeded ? 2.5f : 5.0f);
+        }
+    }
+
+    if (m_buildAndReloadManagedScriptsRequested)
+    {
+        m_buildAndReloadManagedScriptsRequested = false;
+        if (demoScene.BuildManagedScripts())
+        {
+            demoScene.ReloadManagedScripting();
+            if (!demoScene.GetScene().IsEntityAlive(m_selectedObjectId))
+            {
+                m_selectedObjectId = Pragma::Renderer::InvalidEntityId;
+            }
+            const auto& buildStatus = demoScene.GetManagedBuildStatus();
+            m_lastManagedAction = "Build + Reload Managed Scripts";
+            m_lastManagedActionSucceeded = true;
+            m_lastManagedActionDetail = buildStatus.Summary + " Reload completed.";
+            PushNotification("Managed scripts built and reloaded.");
+        }
+        else
+        {
+            const auto& buildStatus = demoScene.GetManagedBuildStatus();
+            m_lastManagedAction = "Build + Reload Managed Scripts";
+            m_lastManagedActionSucceeded = false;
+            m_lastManagedActionDetail = buildStatus.Summary + " Reload skipped.";
+            PushNotification("Managed scripts build failed. Reload skipped.", 5.0f);
+        }
+    }
+
+    if (m_reloadManagedScriptsRequested)
+    {
+        m_reloadManagedScriptsRequested = false;
+        demoScene.ReloadManagedScripting();
+        if (!demoScene.GetScene().IsEntityAlive(m_selectedObjectId))
+        {
+            m_selectedObjectId = Pragma::Renderer::InvalidEntityId;
+        }
+        m_lastManagedAction = "Reload Managed Scripts";
+        m_lastManagedActionDetail = "Managed scripting reloaded.";
+        m_lastManagedActionSucceeded = true;
+        PushNotification("Managed scripting reloaded.");
+    }
 }
 
 Pragma::Renderer::EntityId EditorUI::GetSelectedObjectId() const noexcept
@@ -2340,6 +3327,11 @@ Pragma::Renderer::EntityId EditorUI::GetSelectedObjectId() const noexcept
 bool EditorUI::IsPhysicsOverlayEnabled() const noexcept
 {
     return m_showPhysicsOverlay;
+}
+
+bool EditorUI::IsLodOverlayEnabled() const noexcept
+{
+    return m_showLodOverlay;
 }
 
 void EditorUI::SyncObjectNameEditor(const Pragma::Renderer::SceneObject& object)
@@ -2393,6 +3385,10 @@ void EditorUI::LoadLayoutState(
             {
                 state.ShowInspectorWindow = value;
             }
+            else if (key == "show_settings")
+            {
+                state.ShowSettingsWindow = value;
+            }
             else if (key == "show_material_browser")
             {
                 state.ShowMaterialBrowserWindow = value;
@@ -2401,6 +3397,14 @@ void EditorUI::LoadLayoutState(
             {
                 state.ShowPrefabBrowserWindow = value;
             }
+            else if (key == "show_managed_projects")
+            {
+                state.ShowManagedProjectsWindow = value;
+            }
+            else if (key == "show_managed_scripts")
+            {
+                state.ShowManagedScriptsWindow = value;
+            }
             else if (key == "show_physics_debug")
             {
                 state.ShowPhysicsDebugWindow = value;
@@ -2408,6 +3412,10 @@ void EditorUI::LoadLayoutState(
             else if (key == "show_physics_overlay")
             {
                 state.ShowPhysicsOverlay = value;
+            }
+            else if (key == "show_lod_overlay")
+            {
+                state.ShowLodOverlay = value;
             }
             else if (key == "show_notifications")
             {
@@ -2436,10 +3444,14 @@ void EditorUI::LoadLayoutState(
     m_showHierarchyWindow = state.ShowHierarchyWindow;
     m_showSceneViewWindow = state.ShowSceneViewWindow;
     m_showInspectorWindow = state.ShowInspectorWindow;
+    m_showSettingsWindow = state.ShowSettingsWindow;
     m_showMaterialBrowserWindow = state.ShowMaterialBrowserWindow;
     m_showPrefabBrowserWindow = state.ShowPrefabBrowserWindow;
+    m_showManagedProjectsWindow = state.ShowManagedProjectsWindow;
+    m_showManagedScriptsWindow = state.ShowManagedScriptsWindow;
     m_showPhysicsDebugWindow = state.ShowPhysicsDebugWindow;
     m_showPhysicsOverlay = state.ShowPhysicsOverlay;
+    m_showLodOverlay = state.ShowLodOverlay;
     m_showNotificationsWindow = state.ShowNotificationsWindow;
     m_showStatusWindow = state.ShowStatusWindow;
     showDiagnosticsWindow = state.ShowDiagnosticsWindow;
@@ -2474,10 +3486,14 @@ void EditorUI::SaveLayoutState(const LayoutState& state) const
     writeBool("show_hierarchy", state.ShowHierarchyWindow);
     writeBool("show_scene_view", state.ShowSceneViewWindow);
     writeBool("show_inspector", state.ShowInspectorWindow);
+    writeBool("show_settings", state.ShowSettingsWindow);
     writeBool("show_material_browser", state.ShowMaterialBrowserWindow);
     writeBool("show_prefab_browser", state.ShowPrefabBrowserWindow);
+    writeBool("show_managed_projects", state.ShowManagedProjectsWindow);
+    writeBool("show_managed_scripts", state.ShowManagedScriptsWindow);
     writeBool("show_physics_debug", state.ShowPhysicsDebugWindow);
     writeBool("show_physics_overlay", state.ShowPhysicsOverlay);
+    writeBool("show_lod_overlay", state.ShowLodOverlay);
     writeBool("show_notifications", state.ShowNotificationsWindow);
     writeBool("show_status", state.ShowStatusWindow);
     writeBool("show_diagnostics", state.ShowDiagnosticsWindow);
@@ -2495,10 +3511,14 @@ EditorUI::LayoutState EditorUI::CaptureLayoutState(
     state.ShowHierarchyWindow = m_showHierarchyWindow;
     state.ShowSceneViewWindow = m_showSceneViewWindow;
     state.ShowInspectorWindow = m_showInspectorWindow;
+    state.ShowSettingsWindow = m_showSettingsWindow;
     state.ShowMaterialBrowserWindow = m_showMaterialBrowserWindow;
     state.ShowPrefabBrowserWindow = m_showPrefabBrowserWindow;
+    state.ShowManagedProjectsWindow = m_showManagedProjectsWindow;
+    state.ShowManagedScriptsWindow = m_showManagedScriptsWindow;
     state.ShowPhysicsDebugWindow = m_showPhysicsDebugWindow;
     state.ShowPhysicsOverlay = m_showPhysicsOverlay;
+    state.ShowLodOverlay = m_showLodOverlay;
     state.ShowNotificationsWindow = m_showNotificationsWindow;
     state.ShowStatusWindow = m_showStatusWindow;
     state.ShowDiagnosticsWindow = showDiagnosticsWindow;
@@ -2516,10 +3536,14 @@ void EditorUI::ResetLayoutState(
     m_showHierarchyWindow = true;
     m_showSceneViewWindow = true;
     m_showInspectorWindow = true;
+    m_showSettingsWindow = false;
     m_showMaterialBrowserWindow = true;
     m_showPrefabBrowserWindow = true;
+    m_showManagedProjectsWindow = true;
+    m_showManagedScriptsWindow = true;
     m_showPhysicsDebugWindow = true;
     m_showPhysicsOverlay = false;
+    m_showLodOverlay = false;
     m_showNotificationsWindow = true;
     m_showStatusWindow = true;
     showDiagnosticsWindow = true;

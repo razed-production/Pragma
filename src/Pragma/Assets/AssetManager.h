@@ -20,6 +20,12 @@ class ITexture;
 
 namespace Pragma::Assets
 {
+enum class TextureColorSpace
+{
+    Color,
+    LinearData
+};
+
 class AssetManager
 {
 public:
@@ -32,12 +38,16 @@ public:
     bool RegisterAsset(const AssetId& assetId, const std::filesystem::path& relativePath);
     [[nodiscard]] std::shared_ptr<Pragma::Renderer::Mesh> LoadMesh(const AssetId& assetId);
     [[nodiscard]] std::shared_ptr<Pragma::Renderer::Material> LoadMaterial(const AssetId& assetId);
-    [[nodiscard]] std::shared_ptr<Pragma::RHI::ITexture> LoadTexture(const AssetId& assetId);
+    [[nodiscard]] std::shared_ptr<Pragma::RHI::ITexture> LoadTexture(
+        const AssetId& assetId,
+        TextureColorSpace colorSpace = TextureColorSpace::Color);
 
 private:
     [[nodiscard]] std::shared_ptr<Pragma::Renderer::Mesh> UploadMesh(const MeshAssetData& assetData);
     [[nodiscard]] std::shared_ptr<Pragma::Renderer::Material> UploadMaterial(const MaterialAssetData& assetData);
-    [[nodiscard]] std::shared_ptr<Pragma::RHI::ITexture> UploadTexture(const ImageAssetData& assetData);
+    [[nodiscard]] std::shared_ptr<Pragma::RHI::ITexture> UploadTexture(
+        const ImageAssetData& assetData,
+        TextureColorSpace colorSpace);
 
 private:
     Pragma::RHI::IDevice& m_device;

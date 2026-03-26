@@ -36,7 +36,18 @@ void SceneRuntimeBuilder::Build(Pragma::Renderer::Scene& scene, const Serialized
         if (objectDesc.MeshRenderer.has_value())
         {
             auto meshRenderer = std::make_shared<Pragma::Renderer::MeshRendererComponent>();
+            meshRenderer->MeshAssetId = objectDesc.MeshRenderer->MeshAsset;
+            meshRenderer->MediumLodMeshAssetId = objectDesc.MeshRenderer->MediumLodMeshAsset;
+            meshRenderer->LowLodMeshAssetId = objectDesc.MeshRenderer->LowLodMeshAsset;
             meshRenderer->Mesh = m_assets.LoadMesh(objectDesc.MeshRenderer->MeshAsset);
+            if (!objectDesc.MeshRenderer->MediumLodMeshAsset.empty())
+            {
+                meshRenderer->MediumLodMesh = m_assets.LoadMesh(objectDesc.MeshRenderer->MediumLodMeshAsset);
+            }
+            if (!objectDesc.MeshRenderer->LowLodMeshAsset.empty())
+            {
+                meshRenderer->LowLodMesh = m_assets.LoadMesh(objectDesc.MeshRenderer->LowLodMeshAsset);
+            }
             meshRenderer->MaterialAssetId = objectDesc.MeshRenderer->MaterialAsset;
             meshRenderer->Material = m_assets.LoadMaterial(objectDesc.MeshRenderer->MaterialAsset);
             object.AddComponent(meshRenderer);

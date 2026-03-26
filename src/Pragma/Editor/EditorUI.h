@@ -4,6 +4,7 @@
 #include "Pragma/Core/SceneObjectTemplate.h"
 #include "Pragma/Renderer/Component.h"
 #include "Pragma/Renderer/Entity.h"
+#include "Pragma/Renderer/MeshRendererComponent.h"
 
 #include <array>
 #include <cstddef>
@@ -24,6 +25,7 @@ class PhysicsSystem;
 
 namespace Pragma::Renderer
 {
+class RenderSystem;
 struct SceneObject;
 }
 
@@ -91,6 +93,20 @@ public:
         bool Pending = false;
     };
 
+    struct PendingSceneLoadRequest
+    {
+        std::string SceneAssetName;
+        bool Pending = false;
+    };
+
+    struct PendingMeshRequest
+    {
+        Pragma::Renderer::EntityId Entity = Pragma::Renderer::InvalidEntityId;
+        Pragma::Renderer::MeshLodSlot Slot = Pragma::Renderer::MeshLodSlot::Base;
+        std::string MeshAssetName;
+        bool Pending = false;
+    };
+
     struct PendingMaterialAssetSaveRequest
     {
         std::string MaterialAssetName;
@@ -136,6 +152,7 @@ public:
     void BeginFrame(
         float deltaSeconds,
         Pragma::Core::DemoScene& demoScene,
+        Pragma::Renderer::RenderSystem& renderSystem,
         Pragma::Physics::PhysicsSystem& physicsSystem,
         bool& showDiagnosticsWindow,
         bool& showProfilerWindow,
@@ -144,6 +161,7 @@ public:
 
     [[nodiscard]] Pragma::Renderer::EntityId GetSelectedObjectId() const noexcept;
     [[nodiscard]] bool IsPhysicsOverlayEnabled() const noexcept;
+    [[nodiscard]] bool IsLodOverlayEnabled() const noexcept;
 
 private:
     struct LayoutState
@@ -152,10 +170,14 @@ private:
         bool ShowHierarchyWindow = true;
         bool ShowSceneViewWindow = true;
         bool ShowInspectorWindow = true;
+        bool ShowSettingsWindow = false;
         bool ShowMaterialBrowserWindow = true;
         bool ShowPrefabBrowserWindow = true;
+        bool ShowManagedProjectsWindow = true;
+        bool ShowManagedScriptsWindow = true;
         bool ShowPhysicsDebugWindow = true;
         bool ShowPhysicsOverlay = false;
+        bool ShowLodOverlay = false;
         bool ShowNotificationsWindow = true;
         bool ShowStatusWindow = true;
         bool ShowDiagnosticsWindow = true;
@@ -186,6 +208,9 @@ private:
     Pragma::Renderer::EntityId m_selectedObjectId = Pragma::Renderer::InvalidEntityId;
     bool m_saveSceneRequested = false;
     bool m_reloadSceneRequested = false;
+    bool m_buildManagedScriptsRequested = false;
+    bool m_buildAndReloadManagedScriptsRequested = false;
+    bool m_reloadManagedScriptsRequested = false;
     bool m_undoRequested = false;
     bool m_redoRequested = false;
     PendingCreateObjectRequest m_createObjectRequest;
@@ -193,7 +218,9 @@ private:
     Pragma::Renderer::EntityId m_deleteObjectId = Pragma::Renderer::InvalidEntityId;
     PendingComponentRequest m_addComponentRequest;
     PendingComponentRequest m_removeComponentRequest;
+    PendingSceneLoadRequest m_sceneLoadRequest;
     PendingMaterialRequest m_materialRequest;
+    PendingMeshRequest m_meshRequest;
     PendingMaterialAssetSaveRequest m_materialAssetSaveRequest;
     PendingScriptRequest m_scriptRequest;
     PendingManagedScriptRequest m_managedScriptRequest;
@@ -224,17 +251,25 @@ private:
     bool m_showHierarchyWindow = true;
     bool m_showSceneViewWindow = true;
     bool m_showInspectorWindow = true;
+    bool m_showSettingsWindow = false;
     bool m_showMaterialBrowserWindow = true;
     bool m_showPrefabBrowserWindow = true;
+    bool m_showManagedProjectsWindow = true;
+    bool m_showManagedScriptsWindow = true;
     bool m_showPhysicsDebugWindow = true;
     bool m_showPhysicsOverlay = false;
+    bool m_showLodOverlay = false;
     bool m_showNotificationsWindow = true;
     bool m_showStatusWindow = true;
+    bool m_showManagedFailedOnly = false;
     LayoutState m_lastSavedLayoutState{};
     std::filesystem::path m_layoutStatePath;
     std::string m_selectedMaterialAssetName;
     std::string m_loadedMaterialEditorAssetName;
     std::string m_selectedPrefabAssetName;
+    std::string m_lastManagedAction = "None";
+    std::string m_lastManagedActionDetail;
+    bool m_lastManagedActionSucceeded = true;
     Pragma::Assets::MaterialAssetData m_materialEditorData{};
     std::vector<Notification> m_notifications;
 };

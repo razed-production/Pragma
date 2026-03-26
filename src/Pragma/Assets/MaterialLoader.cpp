@@ -51,6 +51,22 @@ std::array<float, 4> ParseColor4(const std::string& value)
     };
 }
 
+std::array<float, 3> ParseColor3(const std::string& value)
+{
+    const std::vector<std::string> parts = SplitCommaSeparated(value);
+    if (parts.size() != 3)
+    {
+        throw std::runtime_error("Expected a 3-component color.");
+    }
+
+    return
+    {
+        std::stof(parts[0]),
+        std::stof(parts[1]),
+        std::stof(parts[2])
+    };
+}
+
 bool ParseBool(const std::string& value)
 {
     const std::string trimmed = Trim(value);
@@ -75,6 +91,11 @@ std::string FormatColor4(const float color[4])
 {
     return std::to_string(color[0]) + "," + std::to_string(color[1]) + "," + std::to_string(color[2]) + "," + std::to_string(color[3]);
 }
+
+std::string FormatColor3(const float color[3])
+{
+    return std::to_string(color[0]) + "," + std::to_string(color[1]) + "," + std::to_string(color[2]);
+}
 }
 
 namespace Pragma::Assets
@@ -89,6 +110,7 @@ MaterialAssetData LoadMaterialAsset(const std::filesystem::path& path)
 
     MaterialAssetData material;
     bool versionDefined = false;
+    std::uint32_t version = 0;
     std::string line;
     std::size_t lineNumber = 0;
 
@@ -118,8 +140,8 @@ MaterialAssetData LoadMaterialAsset(const std::filesystem::path& path)
 
         if (key == "version")
         {
-            const std::uint32_t version = static_cast<std::uint32_t>(std::stoul(value));
-            if (version != 1)
+            version = static_cast<std::uint32_t>(std::stoul(value));
+            if (version != 1 && version != 2 && version != 3)
             {
                 throw parseError("unsupported material asset version.");
             }
@@ -133,17 +155,93 @@ MaterialAssetData LoadMaterialAsset(const std::filesystem::path& path)
                 material.BaseColor[i] = color[i];
             }
         }
+        else if (key == "emissive_color")
+        {
+            const auto color = ParseColor3(value);
+            for (std::size_t i = 0; i < color.size(); ++i)
+            {
+                material.EmissiveColor[i] = color[i];
+            }
+        }
         else if (key == "roughness")
         {
             material.Roughness = std::stof(value);
+        }
+        else if (key == "metallic")
+        {
+            material.Metallic = std::stof(value);
+        }
+        else if (key == "ambient_occlusion")
+        {
+            material.AmbientOcclusion = std::stof(value);
         }
         else if (key == "use_albedo_texture")
         {
             material.UseAlbedoTexture = ParseBool(value);
         }
+        else if (key == "emissive_intensity")
+        {
+            material.EmissiveIntensity = std::stof(value);
+        }
+        else if (key == "use_normal_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("use_normal_texture requires material asset version 3.");
+            }
+            material.UseNormalTexture = ParseBool(value);
+        }
+        else if (key == "use_orm_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("use_orm_texture requires material asset version 3.");
+            }
+            material.UseOrmTexture = ParseBool(value);
+        }
+        else if (key == "use_emissive_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("use_emissive_texture requires material asset version 3.");
+            }
+            material.UseEmissiveTexture = ParseBool(value);
+        }
+        else if (key == "normal_strength")
+        {
+            if (version < 3)
+            {
+                throw parseError("normal_strength requires material asset version 3.");
+            }
+            material.NormalStrength = std::stof(value);
+        }
         else if (key == "albedo_texture")
         {
             material.AlbedoTextureAsset.Value = value;
+        }
+        else if (key == "normal_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("normal_texture requires material asset version 3.");
+            }
+            material.NormalTextureAsset.Value = value;
+        }
+        else if (key == "orm_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("orm_texture requires material asset version 3.");
+            }
+            material.OrmTextureAsset.Value = value;
+        }
+        else if (key == "emissive_texture")
+        {
+            if (version < 3)
+            {
+                throw parseError("emissive_texture requires material asset version 3.");
+            }
+            material.EmissiveTextureAsset.Value = value;
         }
         else
         {
@@ -168,13 +266,33 @@ void SaveMaterialAsset(const MaterialAssetData& material, const std::filesystem:
     }
 
     output << "# Pragma material asset\n";
-    output << "version=1\n";
+    output << "version=3\n";
     output << "base_color=" << FormatColor4(material.BaseColor) << '\n';
+    output << "emissive_color=" << FormatColor3(material.EmissiveColor) << '\n';
     output << "roughness=" << material.Roughness << '\n';
+    output << "metallic=" << material.Metallic << '\n';
+    output << "ambient_occlusion=" << material.AmbientOcclusion << '\n';
     output << "use_albedo_texture=" << FormatBool(material.UseAlbedoTexture) << '\n';
+    output << "use_normal_texture=" << FormatBool(material.UseNormalTexture) << '\n';
+    output << "use_orm_texture=" << FormatBool(material.UseOrmTexture) << '\n';
+    output << "use_emissive_texture=" << FormatBool(material.UseEmissiveTexture) << '\n';
+    output << "emissive_intensity=" << material.EmissiveIntensity << '\n';
+    output << "normal_strength=" << material.NormalStrength << '\n';
     if (!material.AlbedoTextureAsset.empty())
     {
         output << "albedo_texture=" << material.AlbedoTextureAsset.Value << '\n';
+    }
+    if (!material.NormalTextureAsset.empty())
+    {
+        output << "normal_texture=" << material.NormalTextureAsset.Value << '\n';
+    }
+    if (!material.OrmTextureAsset.empty())
+    {
+        output << "orm_texture=" << material.OrmTextureAsset.Value << '\n';
+    }
+    if (!material.EmissiveTextureAsset.empty())
+    {
+        output << "emissive_texture=" << material.EmissiveTextureAsset.Value << '\n';
     }
 }
 }

@@ -51,6 +51,10 @@ void DX11CommandList::SetRenderTargets(ITexture* colorTarget, ITexture* depthTar
 {
     if (colorTarget == nullptr && depthTarget == nullptr)
     {
+        m_hasCustomRenderTargets = false;
+        m_customRenderTargetView = nullptr;
+        m_customDepthStencilView = nullptr;
+
         DX11Swapchain* swapchain = m_device.GetActiveSwapchain();
         if (swapchain == nullptr)
         {
@@ -63,20 +67,22 @@ void DX11CommandList::SetRenderTargets(ITexture* colorTarget, ITexture* depthTar
 
     auto* dxColor = colorTarget != nullptr ? dynamic_cast<DX11Texture*>(colorTarget) : nullptr;
     auto* dxDepth = depthTarget != nullptr ? dynamic_cast<DX11Texture*>(depthTarget) : nullptr;
-    if (dxColor == nullptr || dxDepth == nullptr)
+    if (dxColor == nullptr)
     {
         throw std::runtime_error("DX11 command list received invalid custom render targets.");
     }
 
-    ID3D11RenderTargetView* renderTargetView = dxColor->GetRenderTargetView();
-    ID3D11DepthStencilView* depthStencilView = dxDepth->GetDepthStencilView();
-    if (renderTargetView == nullptr || depthStencilView == nullptr)
+    m_customRenderTargetView = dxColor->GetRenderTargetView();
+    m_customDepthStencilView = dxDepth != nullptr ? dxDepth->GetDepthStencilView() : nullptr;
+    m_hasCustomRenderTargets = true;
+
+    if (m_customRenderTargetView == nullptr)
     {
-        throw std::runtime_error("DX11 command list custom render targets are missing RTV/DSV.");
+        throw std::runtime_error("DX11 command list custom render targets are missing RTV.");
     }
 
     ID3D11DeviceContext* context = m_device.GetImmediateContext();
-    context->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
+    context->OMSetRenderTargets(1, &m_customRenderTargetView, m_customDepthStencilView);
 
     D3D11_VIEWPORT viewport{};
     viewport.Width = static_cast<float>(dxColor->GetDesc().Width);
@@ -88,12 +94,30 @@ void DX11CommandList::SetRenderTargets(ITexture* colorTarget, ITexture* depthTar
 
 void DX11CommandList::ClearColor(const ClearColorValue& color)
 {
-    m_device.GetActiveSwapchain()->ClearColor(color);
+    if (!m_hasCustomRenderTargets)
+    {
+        m_device.GetActiveSwapchain()->ClearColor(color);
+        return;
+    }
+
+    const float values[4] = { color.R, color.G, color.B, color.A };
+    m_device.GetImmediateContext()->ClearRenderTargetView(m_customRenderTargetView, values);
 }
 
 void DX11CommandList::ClearDepth(const float depthValue)
 {
-    m_device.GetActiveSwapchain()->ClearDepth(depthValue);
+    if (!m_hasCustomRenderTargets)
+    {
+        m_device.GetActiveSwapchain()->ClearDepth(depthValue);
+        return;
+    }
+
+    if (m_customDepthStencilView == nullptr)
+    {
+        return;
+    }
+
+    m_device.GetImmediateContext()->ClearDepthStencilView(m_customDepthStencilView, D3D11_CLEAR_DEPTH, depthValue, 0);
 }
 
 void DX11CommandList::SetGraphicsPipeline(IPipelineState& pipeline)
@@ -111,8 +135,12 @@ void DX11CommandList::SetGraphicsPipeline(IPipelineState& pipeline)
     constexpr float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
     context->OMSetBlendState(dxPipeline.GetBlendState(), blendFactor, 0xFFFFFFFFu);
 
-    ID3D11SamplerState* sampler = m_device.GetDefaultSampler();
-    context->PSSetSamplers(0, 1, &sampler);
+    ID3D11SamplerState* samplers[2] =
+    {
+        m_device.GetDefaultSampler(),
+        m_device.GetShadowSampler()
+    };
+    context->PSSetSamplers(0, 2, samplers);
 }
 
 void DX11CommandList::SetVertexBuffer(IBuffer& buffer, const std::uint64_t offset)
@@ -165,5 +193,15 @@ void DX11CommandList::Draw(const std::uint32_t vertexCount, const std::uint32_t 
 void DX11CommandList::DrawIndexed(const std::uint32_t indexCount, const std::uint32_t firstIndex, const std::int32_t vertexOffset)
 {
     m_device.GetImmediateContext()->DrawIndexed(indexCount, firstIndex, vertexOffset);
+}
+
+void DX11CommandList::DrawIndexedInstanced(
+    const std::uint32_t indexCountPerInstance,
+    const std::uint32_t instanceCount,
+    const std::uint32_t firstIndex,
+    const std::int32_t vertexOffset,
+    const std::uint32_t firstInstance)
+{
+    m_device.GetImmediateContext()->DrawIndexedInstanced(indexCountPerInstance, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 }

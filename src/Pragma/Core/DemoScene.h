@@ -27,6 +27,17 @@ class EngineInput;
 struct EngineTime;
 class SceneDocument;
 
+struct ManagedBuildStatus
+{
+    bool HasRun = false;
+    bool Succeeded = false;
+    int ExitCode = -1;
+    std::filesystem::path ScriptPath;
+    std::filesystem::path StandardOutputPath;
+    std::filesystem::path StandardErrorPath;
+    std::string Summary;
+};
+
 class DemoScene
 {
 public:
@@ -35,8 +46,11 @@ public:
 
     void Initialize();
     void Update(const EngineTime& time, const EngineInput& input);
+    [[nodiscard]] bool LoadSceneAsset(const Pragma::Assets::AssetId& sceneAssetId);
     void SaveDocument();
     void ReloadDocument();
+    void ReloadManagedScripting();
+    [[nodiscard]] bool BuildManagedScripts();
     void MarkDocumentDirty() noexcept;
     void CaptureUndoState(const std::string& label = "Edit");
     [[nodiscard]] bool UndoDocument();
@@ -52,6 +66,10 @@ public:
     [[nodiscard]] bool AddComponent(Pragma::Renderer::EntityId id, Pragma::Renderer::ComponentType componentType);
     [[nodiscard]] bool RemoveComponent(Pragma::Renderer::EntityId id, Pragma::Renderer::ComponentType componentType);
     [[nodiscard]] bool SetMaterialAsset(Pragma::Renderer::EntityId id, const Pragma::Assets::AssetId& materialAssetId);
+    [[nodiscard]] bool SetMeshAsset(
+        Pragma::Renderer::EntityId id,
+        Pragma::Renderer::MeshLodSlot slot,
+        const Pragma::Assets::AssetId& meshAssetId);
     [[nodiscard]] Pragma::Renderer::EntityId InstantiatePrefab(
         const Pragma::Assets::AssetId& prefabAssetId,
         Pragma::Renderer::EntityId parentId = Pragma::Renderer::InvalidEntityId);
@@ -78,11 +96,16 @@ public:
     [[nodiscard]] const std::filesystem::path& GetDocumentPath() const noexcept;
     [[nodiscard]] std::vector<Pragma::Renderer::NativeScriptMetadata> GetAvailableScripts() const;
     [[nodiscard]] std::vector<Pragma::Scripting::ManagedScriptTypeMetadata> GetAvailableManagedScripts() const;
+    [[nodiscard]] const std::vector<Pragma::Scripting::ManagedScriptProject>& GetManagedScriptProjects() const noexcept;
+    [[nodiscard]] const ManagedBuildStatus& GetManagedBuildStatus() const noexcept;
     [[nodiscard]] std::vector<std::string> GetAvailableScriptNames() const;
+    [[nodiscard]] std::vector<std::string> GetAvailableSceneAssetNames() const;
+    [[nodiscard]] std::vector<std::string> GetAvailableMeshAssetNames() const;
     [[nodiscard]] std::vector<std::string> GetAvailableMaterialAssetNames() const;
     [[nodiscard]] std::vector<std::string> GetAvailablePrefabAssetNames() const;
     [[nodiscard]] std::vector<std::string> GetAvailableTextureAssetNames() const;
     [[nodiscard]] std::filesystem::path ResolveAssetPath(const Pragma::Assets::AssetId& assetId) const;
+    [[nodiscard]] const Pragma::Assets::AssetId& GetCurrentSceneAssetId() const noexcept;
     [[nodiscard]] const Pragma::Renderer::Scene& GetScene() const noexcept;
     [[nodiscard]] Pragma::Renderer::Scene& GetScene() noexcept;
 
@@ -95,6 +118,8 @@ private:
     Pragma::Scripting::ManagedScriptHost& m_managedScriptHost;
     std::unique_ptr<Pragma::Renderer::NativeScriptRegistry> m_scriptRegistry;
     std::unique_ptr<SceneDocument> m_document;
+    ManagedBuildStatus m_managedBuildStatus;
+    Pragma::Assets::AssetId m_currentSceneAssetId{ "scene.demo" };
     bool m_initialized = false;
 };
 }

@@ -34,6 +34,8 @@ bool AreTransformsEqual(const Pragma::Renderer::Transform& lhs, const Pragma::Re
 bool AreMeshRenderersEqual(const SerializedMeshRenderer& lhs, const SerializedMeshRenderer& rhs) noexcept
 {
     return AreAssetIdsEqual(lhs.MeshAsset, rhs.MeshAsset) &&
+        AreAssetIdsEqual(lhs.MediumLodMeshAsset, rhs.MediumLodMeshAsset) &&
+        AreAssetIdsEqual(lhs.LowLodMeshAsset, rhs.LowLodMeshAsset) &&
         AreAssetIdsEqual(lhs.MaterialAsset, rhs.MaterialAsset);
 }
 
@@ -165,6 +167,9 @@ SerializedScene SceneStateBridge::Capture(const Pragma::Renderer::Scene& scene, 
         if (const auto* meshRenderer = runtimeObject.GetMeshRenderer();
             meshRenderer != nullptr && serializedIt->MeshRenderer.has_value())
         {
+            serializedIt->MeshRenderer->MeshAsset = meshRenderer->MeshAssetId;
+            serializedIt->MeshRenderer->MediumLodMeshAsset = meshRenderer->MediumLodMeshAssetId;
+            serializedIt->MeshRenderer->LowLodMeshAsset = meshRenderer->LowLodMeshAssetId;
             serializedIt->MeshRenderer->MaterialAsset = meshRenderer->MaterialAssetId;
         }
         else if (runtimeObject.GetMeshRenderer() == nullptr)

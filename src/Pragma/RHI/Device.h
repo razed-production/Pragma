@@ -4,7 +4,9 @@
 #include "Pragma/RHI/Resources.h"
 #include "Pragma/RHI/Types.h"
 
+#include <cstdint>
 #include <memory>
+#include <string_view>
 
 namespace Pragma::RHI
 {
@@ -25,5 +27,9 @@ public:
     [[nodiscard]] virtual std::unique_ptr<IPipelineState> CreateGraphicsPipeline(const GraphicsPipelineDesc& desc) = 0;
     virtual void UpdateBuffer(IBuffer& buffer, const void* data, std::uint64_t sizeInBytes) = 0;
     virtual void Submit(ICommandList& commandList) = 0;
+    virtual void BeginGpuFrameProfile(std::uint64_t) {}
+    virtual void EndGpuFrameProfile() {}
+    virtual void BeginGpuScope(std::string_view) {}
+    virtual void EndGpuScope() {}
 };
 }

@@ -48,7 +48,7 @@ void Application::Run()
 
     Platform::Window window(L"Pragma", 1600, 900);
     std::unique_ptr<RHI::IDevice> device = RHI::CreateDevice(m_config.Graphics.Backend);
-    Renderer::RenderSystem renderer(*device, window.GetNativeWindow(), window.GetExtent());
+    Renderer::RenderSystem renderer(*device, window.GetNativeWindow(), window.GetExtent(), m_config.Graphics);
     Renderer::CameraSystem cameraSystem;
     Physics::PhysicsSystem physicsSystem;
     Scripting::ManagedScriptHost managedScriptHost;
@@ -134,11 +134,11 @@ void Application::Run()
         }
         {
             PRAGMA_PROFILE_SCOPE("DebugUI BeginFrame");
-            debugUi.BeginFrame(deltaSeconds, demoScene, physicsSystem, managedScriptHost);
+            debugUi.BeginFrame(deltaSeconds, demoScene, renderer, physicsSystem, managedScriptHost);
         }
         {
             PRAGMA_PROFILE_SCOPE("Render");
-            renderer.RenderFrame(demoScene.GetScene(), debugUi.IsPhysicsOverlayEnabled(), [&debugUi]()
+            renderer.RenderFrame(demoScene.GetScene(), debugUi.IsPhysicsOverlayEnabled(), debugUi.IsLodOverlayEnabled(), [&debugUi]()
             {
                 debugUi.Render();
             });

@@ -4,6 +4,7 @@
 #include "Pragma/Core/Log.h"
 #include "Pragma/Renderer/BehaviourComponent.h"
 
+#include <cstdint>
 #include <string>
 
 namespace Pragma::Renderer
@@ -11,6 +12,16 @@ namespace Pragma::Renderer
 class ManagedScriptComponent final : public BehaviourComponent
 {
 public:
+    enum class LifecycleState
+    {
+        Uninitialized,
+        Created,
+        Started,
+        Running,
+        Destroyed,
+        Failed
+    };
+
     static constexpr ComponentType kType = ComponentType::ManagedScript;
 
     ManagedScriptComponent() = default;
@@ -27,6 +38,10 @@ public:
     [[nodiscard]] int GetInstanceHandle() const noexcept;
 
     [[nodiscard]] const std::string& GetLastStatus() const noexcept;
+    [[nodiscard]] LifecycleState GetLifecycleState() const noexcept;
+    [[nodiscard]] std::uint64_t GetUpdateCount() const noexcept;
+    [[nodiscard]] std::uint64_t GetLastUpdatedFrame() const noexcept;
+    [[nodiscard]] bool WasLastCallSuccessful() const noexcept;
 
     void SetBinding(Pragma::Assets::AssetId projectAssetId, std::string typeName);
     void OnStart(const BehaviourContext& context) override;
@@ -38,5 +53,9 @@ private:
     std::string m_typeName;
     int m_instanceHandle = 0;
     std::string m_lastStatus;
+    LifecycleState m_lifecycleState = LifecycleState::Uninitialized;
+    std::uint64_t m_updateCount = 0;
+    std::uint64_t m_lastUpdatedFrame = 0;
+    bool m_lastCallSucceeded = false;
 };
 }

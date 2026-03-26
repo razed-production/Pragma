@@ -1,6 +1,7 @@
 #include "Pragma/Scripting/ManagedScriptHost.h"
 
 #include "Pragma/Assets/AssetManager.h"
+#include "Pragma/Core/EngineInput.h"
 #include "Pragma/Core/Log.h"
 #include "Pragma/Renderer/Scene.h"
 #include "Pragma/Renderer/Transform.h"
@@ -54,6 +55,42 @@ struct ManagedLightSnapshot
     float Padding0 = 0.0f;
 };
 
+struct ManagedRigidBodySnapshot
+{
+    int Enabled = 1;
+    int MotionType = 1;
+    int CollisionLayer = 0;
+    float Friction = 0.5f;
+    float Restitution = 0.0f;
+    float LinearDamping = 0.05f;
+    float AngularDamping = 0.05f;
+    float GravityFactor = 1.0f;
+};
+
+struct ManagedInputSnapshot
+{
+    int MoveForward = 0;
+    int MoveBackward = 0;
+    int MoveLeft = 0;
+    int MoveRight = 0;
+    int MoveUp = 0;
+    int MoveDown = 0;
+    int LookLeft = 0;
+    int LookRight = 0;
+    int LookUp = 0;
+    int LookDown = 0;
+    int FastMove = 0;
+    int RightMouseButtonDown = 0;
+    int MouseDeltaX = 0;
+    int MouseDeltaY = 0;
+};
+
+struct ManagedRuntimeContext
+{
+    Pragma::Renderer::Scene* Scene = nullptr;
+    const Pragma::Core::EngineInput* Input = nullptr;
+};
+
 struct ManagedBindings
 {
     void* LogCallback = nullptr;
@@ -71,7 +108,28 @@ struct ManagedBindings
     void* SetCamera = nullptr;
     void* GetLight = nullptr;
     void* SetLight = nullptr;
+    void* GetRigidBody = nullptr;
+    void* SetRigidBody = nullptr;
+    void* GetInputSnapshot = nullptr;
 };
+
+std::uint64_t __cdecl ManagedFindEntityByNameCallback(void* sceneContext, const char* name);
+int __cdecl ManagedIsEntityValidCallback(void* sceneContext, std::uint64_t entityId);
+int __cdecl ManagedGetEntityNameCallback(void* sceneContext, std::uint64_t entityId, char* buffer, int bufferSize);
+std::uint64_t __cdecl ManagedGetParentCallback(void* sceneContext, std::uint64_t entityId);
+std::uint64_t __cdecl ManagedGetChildCountCallback(void* sceneContext, std::uint64_t entityId);
+std::uint64_t __cdecl ManagedGetChildAtCallback(void* sceneContext, std::uint64_t entityId, std::uint64_t childIndex);
+std::uint64_t __cdecl ManagedGetActiveCameraEntityCallback(void* sceneContext);
+std::uint64_t __cdecl ManagedGetEntityCountCallback(void* sceneContext);
+int __cdecl ManagedGetTransformCallback(void* sceneContext, std::uint64_t entityId, ManagedTransformSnapshot* outTransform);
+int __cdecl ManagedSetTransformCallback(void* sceneContext, std::uint64_t entityId, const ManagedTransformSnapshot* transformSnapshot);
+int __cdecl ManagedGetCameraCallback(void* sceneContext, std::uint64_t entityId, ManagedCameraSnapshot* outCamera);
+int __cdecl ManagedSetCameraCallback(void* sceneContext, std::uint64_t entityId, const ManagedCameraSnapshot* cameraSnapshot);
+int __cdecl ManagedGetLightCallback(void* sceneContext, std::uint64_t entityId, ManagedLightSnapshot* outLight);
+int __cdecl ManagedSetLightCallback(void* sceneContext, std::uint64_t entityId, const ManagedLightSnapshot* lightSnapshot);
+int __cdecl ManagedGetRigidBodyCallback(void* sceneContext, std::uint64_t entityId, ManagedRigidBodySnapshot* outRigidBody);
+int __cdecl ManagedSetRigidBodyCallback(void* sceneContext, std::uint64_t entityId, const ManagedRigidBodySnapshot* rigidBodySnapshot);
+int __cdecl ManagedGetInputSnapshotCallback(void* sceneContext, ManagedInputSnapshot* outInput);
 
 using managed_binding_probe_fn = int(*)(ManagedTimeSnapshot, ManagedBindings, void*);
 using managed_create_script_instance_fn = int(*)(const char*, std::uint64_t);
@@ -173,6 +231,60 @@ void __cdecl ManagedProbeLogCallback(const char* message)
     return light;
 }
 
+[[nodiscard]] ManagedRigidBodySnapshot ToManagedRigidBodySnapshot(const Pragma::Renderer::RigidBodyComponent& rigidBody) noexcept
+{
+    return
+    {
+        rigidBody.Enabled ? 1 : 0,
+        static_cast<int>(rigidBody.MotionType),
+        static_cast<int>(rigidBody.CollisionLayer),
+        rigidBody.Friction,
+        rigidBody.Restitution,
+        rigidBody.LinearDamping,
+        rigidBody.AngularDamping,
+        rigidBody.GravityFactor
+    };
+}
+
+[[nodiscard]] Pragma::Renderer::RigidBodyComponent ToRigidBodyComponent(const ManagedRigidBodySnapshot& snapshot) noexcept
+{
+    Pragma::Renderer::RigidBodyComponent rigidBody{};
+    rigidBody.Enabled = snapshot.Enabled != 0;
+    rigidBody.MotionType = static_cast<Pragma::Renderer::RigidBodyMotionType>(snapshot.MotionType);
+    rigidBody.CollisionLayer = static_cast<Pragma::Renderer::RigidBodyCollisionLayer>(snapshot.CollisionLayer);
+    rigidBody.Friction = snapshot.Friction;
+    rigidBody.Restitution = snapshot.Restitution;
+    rigidBody.LinearDamping = snapshot.LinearDamping;
+    rigidBody.AngularDamping = snapshot.AngularDamping;
+    rigidBody.GravityFactor = snapshot.GravityFactor;
+    return rigidBody;
+}
+
+[[nodiscard]] ManagedBindings MakeManagedBindings() noexcept
+{
+    return
+    {
+        reinterpret_cast<void*>(&ManagedProbeLogCallback),
+        reinterpret_cast<void*>(&ManagedFindEntityByNameCallback),
+        reinterpret_cast<void*>(&ManagedIsEntityValidCallback),
+        reinterpret_cast<void*>(&ManagedGetEntityNameCallback),
+        reinterpret_cast<void*>(&ManagedGetParentCallback),
+        reinterpret_cast<void*>(&ManagedGetChildCountCallback),
+        reinterpret_cast<void*>(&ManagedGetChildAtCallback),
+        reinterpret_cast<void*>(&ManagedGetActiveCameraEntityCallback),
+        reinterpret_cast<void*>(&ManagedGetEntityCountCallback),
+        reinterpret_cast<void*>(&ManagedGetTransformCallback),
+        reinterpret_cast<void*>(&ManagedSetTransformCallback),
+        reinterpret_cast<void*>(&ManagedGetCameraCallback),
+        reinterpret_cast<void*>(&ManagedSetCameraCallback),
+        reinterpret_cast<void*>(&ManagedGetLightCallback),
+        reinterpret_cast<void*>(&ManagedSetLightCallback),
+        reinterpret_cast<void*>(&ManagedGetRigidBodyCallback),
+        reinterpret_cast<void*>(&ManagedSetRigidBodyCallback),
+        reinterpret_cast<void*>(&ManagedGetInputSnapshotCallback)
+    };
+}
+
 [[nodiscard]] ManagedTimeSnapshot ToManagedTimeSnapshot(const ManagedScriptTimeSnapshot& time) noexcept
 {
     return
@@ -190,8 +302,13 @@ std::uint64_t __cdecl ManagedFindEntityByNameCallback(void* sceneContext, const 
         return Pragma::Renderer::InvalidEntityId;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return scene->FindEntityIdByName(name);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return Pragma::Renderer::InvalidEntityId;
+    }
+
+    return runtimeContext->Scene->FindEntityIdByName(name);
 }
 
 int __cdecl ManagedIsEntityValidCallback(void* sceneContext, const std::uint64_t entityId)
@@ -201,8 +318,8 @@ int __cdecl ManagedIsEntityValidCallback(void* sceneContext, const std::uint64_t
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return scene->IsEntityAlive(entityId) ? 1 : 0;
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    return runtimeContext->Scene != nullptr && runtimeContext->Scene->IsEntityAlive(entityId) ? 1 : 0;
 }
 
 int __cdecl ManagedGetEntityNameCallback(void* sceneContext, const std::uint64_t entityId, char* buffer, const int bufferSize)
@@ -212,8 +329,14 @@ int __cdecl ManagedGetEntityNameCallback(void* sceneContext, const std::uint64_t
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    const Pragma::Renderer::SceneObject* object = scene->FindObject(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        buffer[0] = '\0';
+        return 0;
+    }
+
+    const Pragma::Renderer::SceneObject* object = runtimeContext->Scene->FindObject(entityId);
     if (object == nullptr)
     {
         buffer[0] = '\0';
@@ -231,8 +354,10 @@ std::uint64_t __cdecl ManagedGetParentCallback(void* sceneContext, const std::ui
         return Pragma::Renderer::InvalidEntityId;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return scene->GetParentId(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    return runtimeContext->Scene != nullptr
+        ? runtimeContext->Scene->GetParentId(entityId)
+        : Pragma::Renderer::InvalidEntityId;
 }
 
 std::uint64_t __cdecl ManagedGetChildCountCallback(void* sceneContext, const std::uint64_t entityId)
@@ -242,8 +367,10 @@ std::uint64_t __cdecl ManagedGetChildCountCallback(void* sceneContext, const std
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return static_cast<std::uint64_t>(scene->GetChildren(entityId).size());
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    return runtimeContext->Scene != nullptr
+        ? static_cast<std::uint64_t>(runtimeContext->Scene->GetChildren(entityId).size())
+        : 0;
 }
 
 std::uint64_t __cdecl ManagedGetChildAtCallback(void* sceneContext, const std::uint64_t entityId, const std::uint64_t childIndex)
@@ -253,8 +380,13 @@ std::uint64_t __cdecl ManagedGetChildAtCallback(void* sceneContext, const std::u
         return Pragma::Renderer::InvalidEntityId;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    const std::vector<Pragma::Renderer::EntityId> children = scene->GetChildren(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return Pragma::Renderer::InvalidEntityId;
+    }
+
+    const std::vector<Pragma::Renderer::EntityId> children = runtimeContext->Scene->GetChildren(entityId);
     if (childIndex >= children.size())
     {
         return Pragma::Renderer::InvalidEntityId;
@@ -270,8 +402,10 @@ std::uint64_t __cdecl ManagedGetActiveCameraEntityCallback(void* sceneContext)
         return Pragma::Renderer::InvalidEntityId;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return scene->GetActiveCameraEntityId();
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    return runtimeContext->Scene != nullptr
+        ? runtimeContext->Scene->GetActiveCameraEntityId()
+        : Pragma::Renderer::InvalidEntityId;
 }
 
 std::uint64_t __cdecl ManagedGetEntityCountCallback(void* sceneContext)
@@ -281,8 +415,10 @@ std::uint64_t __cdecl ManagedGetEntityCountCallback(void* sceneContext)
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    return static_cast<std::uint64_t>(scene->GetObjects().size());
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    return runtimeContext->Scene != nullptr
+        ? static_cast<std::uint64_t>(runtimeContext->Scene->GetObjects().size())
+        : 0;
 }
 
 int __cdecl ManagedGetTransformCallback(void* sceneContext, const std::uint64_t entityId, ManagedTransformSnapshot* outTransform)
@@ -292,8 +428,13 @@ int __cdecl ManagedGetTransformCallback(void* sceneContext, const std::uint64_t 
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    const Pragma::Renderer::Transform* transform = scene->GetTransform(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    const Pragma::Renderer::Transform* transform = runtimeContext->Scene->GetTransform(entityId);
     if (transform == nullptr)
     {
         return 0;
@@ -310,8 +451,13 @@ int __cdecl ManagedSetTransformCallback(void* sceneContext, const std::uint64_t 
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    Pragma::Renderer::Transform* transform = scene->GetTransform(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    Pragma::Renderer::Transform* transform = runtimeContext->Scene->GetTransform(entityId);
     if (transform == nullptr)
     {
         return 0;
@@ -328,8 +474,13 @@ int __cdecl ManagedGetCameraCallback(void* sceneContext, const std::uint64_t ent
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    const Pragma::Renderer::CameraComponent* camera = scene->GetCamera(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    const Pragma::Renderer::CameraComponent* camera = runtimeContext->Scene->GetCamera(entityId);
     if (camera == nullptr)
     {
         return 0;
@@ -346,8 +497,13 @@ int __cdecl ManagedSetCameraCallback(void* sceneContext, const std::uint64_t ent
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    Pragma::Renderer::CameraComponent* camera = scene->GetCamera(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    Pragma::Renderer::CameraComponent* camera = runtimeContext->Scene->GetCamera(entityId);
     if (camera == nullptr)
     {
         return 0;
@@ -364,8 +520,13 @@ int __cdecl ManagedGetLightCallback(void* sceneContext, const std::uint64_t enti
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    const Pragma::Renderer::LightComponent* light = scene->GetLight(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    const Pragma::Renderer::LightComponent* light = runtimeContext->Scene->GetLight(entityId);
     if (light == nullptr)
     {
         return 0;
@@ -382,14 +543,95 @@ int __cdecl ManagedSetLightCallback(void* sceneContext, const std::uint64_t enti
         return 0;
     }
 
-    auto* scene = static_cast<Pragma::Renderer::Scene*>(sceneContext);
-    Pragma::Renderer::LightComponent* light = scene->GetLight(entityId);
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    Pragma::Renderer::LightComponent* light = runtimeContext->Scene->GetLight(entityId);
     if (light == nullptr)
     {
         return 0;
     }
 
     *light = ToLightComponent(*lightSnapshot);
+    return 1;
+}
+
+int __cdecl ManagedGetRigidBodyCallback(void* sceneContext, const std::uint64_t entityId, ManagedRigidBodySnapshot* outRigidBody)
+{
+    if (sceneContext == nullptr || outRigidBody == nullptr)
+    {
+        return 0;
+    }
+
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    const Pragma::Renderer::RigidBodyComponent* rigidBody = runtimeContext->Scene->GetRigidBody(entityId);
+    if (rigidBody == nullptr)
+    {
+        return 0;
+    }
+
+    *outRigidBody = ToManagedRigidBodySnapshot(*rigidBody);
+    return 1;
+}
+
+int __cdecl ManagedSetRigidBodyCallback(void* sceneContext, const std::uint64_t entityId, const ManagedRigidBodySnapshot* rigidBodySnapshot)
+{
+    if (sceneContext == nullptr || rigidBodySnapshot == nullptr)
+    {
+        return 0;
+    }
+
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Scene == nullptr)
+    {
+        return 0;
+    }
+
+    Pragma::Renderer::RigidBodyComponent* rigidBody = runtimeContext->Scene->GetRigidBody(entityId);
+    if (rigidBody == nullptr)
+    {
+        return 0;
+    }
+
+    *rigidBody = ToRigidBodyComponent(*rigidBodySnapshot);
+    return 1;
+}
+
+int __cdecl ManagedGetInputSnapshotCallback(void* sceneContext, ManagedInputSnapshot* outInput)
+{
+    if (sceneContext == nullptr || outInput == nullptr)
+    {
+        return 0;
+    }
+
+    auto* runtimeContext = static_cast<ManagedRuntimeContext*>(sceneContext);
+    if (runtimeContext->Input == nullptr)
+    {
+        return 0;
+    }
+
+    outInput->MoveForward = runtimeContext->Input->IsMoveForwardPressed() ? 1 : 0;
+    outInput->MoveBackward = runtimeContext->Input->IsMoveBackwardPressed() ? 1 : 0;
+    outInput->MoveLeft = runtimeContext->Input->IsMoveLeftPressed() ? 1 : 0;
+    outInput->MoveRight = runtimeContext->Input->IsMoveRightPressed() ? 1 : 0;
+    outInput->MoveUp = runtimeContext->Input->IsMoveUpPressed() ? 1 : 0;
+    outInput->MoveDown = runtimeContext->Input->IsMoveDownPressed() ? 1 : 0;
+    outInput->LookLeft = runtimeContext->Input->IsLookLeftPressed() ? 1 : 0;
+    outInput->LookRight = runtimeContext->Input->IsLookRightPressed() ? 1 : 0;
+    outInput->LookUp = runtimeContext->Input->IsLookUpPressed() ? 1 : 0;
+    outInput->LookDown = runtimeContext->Input->IsLookDownPressed() ? 1 : 0;
+    outInput->FastMove = runtimeContext->Input->IsFastMovePressed() ? 1 : 0;
+    outInput->RightMouseButtonDown = runtimeContext->Input->IsRightMouseButtonDown() ? 1 : 0;
+    outInput->MouseDeltaX = runtimeContext->Input->GetMouseDeltaX();
+    outInput->MouseDeltaY = runtimeContext->Input->GetMouseDeltaY();
     return 1;
 }
 }
@@ -568,25 +810,8 @@ void ManagedScriptHost::RunBindingProbe(Pragma::Renderer::Scene& scene)
                     scene.GetElapsedSeconds(),
                     scene.GetFrameIndex()
                 };
-                const ManagedBindings bindings
-                {
-                    reinterpret_cast<void*>(&ManagedProbeLogCallback),
-                    reinterpret_cast<void*>(&ManagedFindEntityByNameCallback),
-                    reinterpret_cast<void*>(&ManagedIsEntityValidCallback),
-                    reinterpret_cast<void*>(&ManagedGetEntityNameCallback),
-                    reinterpret_cast<void*>(&ManagedGetParentCallback),
-                    reinterpret_cast<void*>(&ManagedGetChildCountCallback),
-                    reinterpret_cast<void*>(&ManagedGetChildAtCallback),
-                    reinterpret_cast<void*>(&ManagedGetActiveCameraEntityCallback),
-                    reinterpret_cast<void*>(&ManagedGetEntityCountCallback),
-                    reinterpret_cast<void*>(&ManagedGetTransformCallback),
-                    reinterpret_cast<void*>(&ManagedSetTransformCallback),
-                    reinterpret_cast<void*>(&ManagedGetCameraCallback),
-                    reinterpret_cast<void*>(&ManagedSetCameraCallback),
-                    reinterpret_cast<void*>(&ManagedGetLightCallback),
-                    reinterpret_cast<void*>(&ManagedSetLightCallback)
-                };
-                project.BindingProbeValue = bindingProbe(timeSnapshot, bindings, &scene);
+                ManagedRuntimeContext runtimeContext{ &scene, nullptr };
+                project.BindingProbeValue = bindingProbe(timeSnapshot, MakeManagedBindings(), &runtimeContext);
                 project.BindingStatus += " Value=" + std::to_string(project.BindingProbeValue) + ".";
             }
 
@@ -672,25 +897,8 @@ bool ManagedScriptHost::StartScriptInstance(
     }
 
     const auto startInstance = reinterpret_cast<managed_script_lifecycle_fn>(apiIt->StartInstance);
-    const ManagedBindings bindings
-    {
-        reinterpret_cast<void*>(&ManagedProbeLogCallback),
-        reinterpret_cast<void*>(&ManagedFindEntityByNameCallback),
-        reinterpret_cast<void*>(&ManagedIsEntityValidCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityNameCallback),
-        reinterpret_cast<void*>(&ManagedGetParentCallback),
-        reinterpret_cast<void*>(&ManagedGetChildCountCallback),
-        reinterpret_cast<void*>(&ManagedGetChildAtCallback),
-        reinterpret_cast<void*>(&ManagedGetActiveCameraEntityCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityCountCallback),
-        reinterpret_cast<void*>(&ManagedGetTransformCallback),
-        reinterpret_cast<void*>(&ManagedSetTransformCallback),
-        reinterpret_cast<void*>(&ManagedGetCameraCallback),
-        reinterpret_cast<void*>(&ManagedSetCameraCallback),
-        reinterpret_cast<void*>(&ManagedGetLightCallback),
-        reinterpret_cast<void*>(&ManagedSetLightCallback)
-    };
-    const int result = startInstance(instanceHandle, ToManagedTimeSnapshot(time), bindings, &scene);
+    ManagedRuntimeContext runtimeContext{ &scene, time.Input };
+    const int result = startInstance(instanceHandle, ToManagedTimeSnapshot(time), MakeManagedBindings(), &runtimeContext);
     status = "managed script OnStart returned " + std::to_string(result) + '.';
     return result != 0;
 }
@@ -716,25 +924,8 @@ bool ManagedScriptHost::UpdateScriptInstance(
     }
 
     const auto updateInstance = reinterpret_cast<managed_script_lifecycle_fn>(apiIt->UpdateInstance);
-    const ManagedBindings bindings
-    {
-        reinterpret_cast<void*>(&ManagedProbeLogCallback),
-        reinterpret_cast<void*>(&ManagedFindEntityByNameCallback),
-        reinterpret_cast<void*>(&ManagedIsEntityValidCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityNameCallback),
-        reinterpret_cast<void*>(&ManagedGetParentCallback),
-        reinterpret_cast<void*>(&ManagedGetChildCountCallback),
-        reinterpret_cast<void*>(&ManagedGetChildAtCallback),
-        reinterpret_cast<void*>(&ManagedGetActiveCameraEntityCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityCountCallback),
-        reinterpret_cast<void*>(&ManagedGetTransformCallback),
-        reinterpret_cast<void*>(&ManagedSetTransformCallback),
-        reinterpret_cast<void*>(&ManagedGetCameraCallback),
-        reinterpret_cast<void*>(&ManagedSetCameraCallback),
-        reinterpret_cast<void*>(&ManagedGetLightCallback),
-        reinterpret_cast<void*>(&ManagedSetLightCallback)
-    };
-    const int result = updateInstance(instanceHandle, ToManagedTimeSnapshot(time), bindings, &scene);
+    ManagedRuntimeContext runtimeContext{ &scene, time.Input };
+    const int result = updateInstance(instanceHandle, ToManagedTimeSnapshot(time), MakeManagedBindings(), &runtimeContext);
     status = "managed script OnUpdate returned " + std::to_string(result) + '.';
     return result != 0;
 }
@@ -760,25 +951,8 @@ bool ManagedScriptHost::DestroyScriptInstance(
     }
 
     const auto destroyInstance = reinterpret_cast<managed_script_lifecycle_fn>(apiIt->DestroyInstance);
-    const ManagedBindings bindings
-    {
-        reinterpret_cast<void*>(&ManagedProbeLogCallback),
-        reinterpret_cast<void*>(&ManagedFindEntityByNameCallback),
-        reinterpret_cast<void*>(&ManagedIsEntityValidCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityNameCallback),
-        reinterpret_cast<void*>(&ManagedGetParentCallback),
-        reinterpret_cast<void*>(&ManagedGetChildCountCallback),
-        reinterpret_cast<void*>(&ManagedGetChildAtCallback),
-        reinterpret_cast<void*>(&ManagedGetActiveCameraEntityCallback),
-        reinterpret_cast<void*>(&ManagedGetEntityCountCallback),
-        reinterpret_cast<void*>(&ManagedGetTransformCallback),
-        reinterpret_cast<void*>(&ManagedSetTransformCallback),
-        reinterpret_cast<void*>(&ManagedGetCameraCallback),
-        reinterpret_cast<void*>(&ManagedSetCameraCallback),
-        reinterpret_cast<void*>(&ManagedGetLightCallback),
-        reinterpret_cast<void*>(&ManagedSetLightCallback)
-    };
-    const int result = destroyInstance(instanceHandle, ToManagedTimeSnapshot(time), bindings, &scene);
+    ManagedRuntimeContext runtimeContext{ &scene, time.Input };
+    const int result = destroyInstance(instanceHandle, ToManagedTimeSnapshot(time), MakeManagedBindings(), &runtimeContext);
     status = "managed script OnDestroy returned " + std::to_string(result) + '.';
     return result != 0;
 }

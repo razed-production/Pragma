@@ -8,6 +8,7 @@
 #include "Pragma/Core/Profiler.h"
 #include "Pragma/Editor/EditorUI.h"
 #include "Pragma/Physics/PhysicsSystem.h"
+#include "Pragma/Renderer/RenderSystem.h"
 #include "Pragma/RHI/DX11/DX11Device.h"
 #include "Pragma/RHI/Device.h"
 #include "Pragma/Scripting/ManagedScriptHost.h"
@@ -116,6 +117,7 @@ bool DebugUI::HandleWindowMessage(void* hwnd, const unsigned int message, const 
 void DebugUI::BeginFrame(
     const float deltaSeconds,
     Pragma::Core::DemoScene& demoScene,
+    Pragma::Renderer::RenderSystem& renderSystem,
     Pragma::Physics::PhysicsSystem& physicsSystem,
     Pragma::Scripting::ManagedScriptHost& managedScriptHost)
 {
@@ -138,6 +140,7 @@ void DebugUI::BeginFrame(
     m_editorUi->BeginFrame(
         deltaSeconds,
         demoScene,
+        renderSystem,
         physicsSystem,
         m_showDiagnosticsWindow,
         m_showProfilerWindow,
@@ -148,6 +151,8 @@ void DebugUI::BeginFrame(
     const bool hasActiveCamera = activeCameraObject != nullptr && activeCameraObject->HasCamera();
     int lightCount = 0;
     int physicsIssueCount = 0;
+    int managedScriptCount = 0;
+    int managedScriptIssueCount = 0;
     for (const Pragma::Renderer::SceneObject& object : scene.GetObjects())
     {
         if (object.HasLight())
@@ -166,6 +171,15 @@ void DebugUI::BeginFrame(
                 ++physicsIssueCount;
             }
         }
+
+        if (const auto* managedScript = object.GetManagedScript(); managedScript != nullptr)
+        {
+            ++managedScriptCount;
+            if (managedScript->GetLifecycleState() == Pragma::Renderer::ManagedScriptComponent::LifecycleState::Failed)
+            {
+                ++managedScriptIssueCount;
+            }
+        }
     }
     const std::size_t physicsBodyCount = physicsSystem.GetBodyCount();
     const std::size_t activePhysicsBodyCount = physicsSystem.GetActiveBodyCount();
@@ -173,6 +187,7 @@ void DebugUI::BeginFrame(
     const std::vector<Pragma::Core::LogEntry> logEntries = Pragma::Core::GetLogEntriesSnapshot();
     const Pragma::Core::FrameProfile frameProfile = Pragma::Core::GetLastFrameProfileSnapshot();
     const Pragma::Core::GpuFrameProfile gpuFrameProfile = Pragma::Core::GetLastGpuFrameProfileSnapshot();
+    const Pragma::Renderer::RenderStatistics& renderStats = renderSystem.GetLastFrameStatistics();
     const double lastFrameMilliseconds = Pragma::Core::GetLastFrameMilliseconds();
     const double peakFrameMilliseconds = Pragma::Core::GetPeakFrameMilliseconds();
     const std::uint64_t peakFrameIndex = Pragma::Core::GetPeakFrameIndex();
@@ -195,11 +210,27 @@ void DebugUI::BeginFrame(
     }
 
     const Pragma::Renderer::SceneObject* selectedObject = scene.FindObject(m_editorUi->GetSelectedObjectId());
+    const Pragma::Core::ManagedBuildStatus& managedBuildStatus = demoScene.GetManagedBuildStatus();
 
     if (m_showDiagnosticsWindow)
     {
         ImGui::SetNextWindowSize(ImVec2(360.0f, 140.0f), ImGuiCond_FirstUseEver);
         ImGui::Begin("Diagnostics", &m_showDiagnosticsWindow);
+        int graphicsQualityPreset = static_cast<int>(renderSystem.GetGraphicsQualityPreset());
+        if (ImGui::Combo("Graphics Quality", &graphicsQualityPreset, "Performance\0Balanced\0Quality\0Custom\0"))
+        {
+            const auto preset = static_cast<Pragma::Core::GraphicsQualityPreset>(graphicsQualityPreset);
+            if (preset == Pragma::Core::GraphicsQualityPreset::Custom)
+            {
+                Pragma::Core::GraphicsConfig graphicsConfig = renderSystem.GetGraphicsConfig();
+                graphicsConfig.QualityPreset = Pragma::Core::GraphicsQualityPreset::Custom;
+                renderSystem.ApplyGraphicsConfig(graphicsConfig);
+            }
+            else
+            {
+                renderSystem.SetGraphicsQualityPreset(preset);
+            }
+        }
         ImGui::Text("Warnings: %d", warningCount);
         ImGui::Text("Errors: %d", errorCount);
         ImGui::Separator();
@@ -212,12 +243,119 @@ void DebugUI::BeginFrame(
         ImGui::Text("Managed Runtime Ready: %llu", static_cast<unsigned long long>(managedScriptHost.GetRuntimeReadyProjectCount()));
         ImGui::Text("Managed Entry Points Ready: %llu", static_cast<unsigned long long>(managedScriptHost.GetEntryPointReadyProjectCount()));
         ImGui::Text("Managed Binding Probes Ready: %llu", static_cast<unsigned long long>(managedScriptHost.GetBindingReadyProjectCount()));
+        ImGui::Text("Managed Instances: %d (%d failed)", managedScriptCount, managedScriptIssueCount);
+        ImGui::Separator();
+        ImGui::Text("Render Meshes: %llu total, %llu proxies, %llu visible, %llu culled",
+            static_cast<unsigned long long>(renderStats.MeshRendererCount),
+            static_cast<unsigned long long>(renderStats.RenderProxyCount),
+            static_cast<unsigned long long>(renderStats.MainPassVisibleMeshCount),
+            static_cast<unsigned long long>(renderStats.MainPassCulledMeshCount));
+        ImGui::Text("Internal Render: %ux%u (scale %.2f)",
+            renderStats.InternalRenderWidth,
+            renderStats.InternalRenderHeight,
+            renderStats.RenderScale);
+        ImGui::Text("Quality Preset: %s", Pragma::Core::ToString(renderStats.QualityPreset));
+        ImGui::Text("Shading Quality: %s", Pragma::Core::ToString(renderStats.ShadingQuality));
+        ImGui::Text("Cached World Transforms: %llu", static_cast<unsigned long long>(renderStats.CachedWorldTransformCount));
+        ImGui::Text("Shadow Casters: %llu visible, %llu culled, %llu LOD-skipped",
+            static_cast<unsigned long long>(renderStats.ShadowPassVisibleMeshCount),
+            static_cast<unsigned long long>(renderStats.ShadowPassCulledMeshCount),
+            static_cast<unsigned long long>(renderStats.ShadowPassLodSkippedMeshCount));
+        ImGui::Text("LOD: %s (%llu high, %llu medium, %llu low)",
+            renderStats.LodEnabled ? "Enabled" : "Disabled",
+            static_cast<unsigned long long>(renderStats.HighLodMeshCount),
+            static_cast<unsigned long long>(renderStats.MediumLodMeshCount),
+            static_cast<unsigned long long>(renderStats.LowLodMeshCount));
+        ImGui::Text("LOD Overlay: %llu objects, %llu draws",
+            static_cast<unsigned long long>(renderStats.LodOverlayObjectCount),
+            static_cast<unsigned long long>(renderStats.LodOverlayDrawCalls));
+        ImGui::Text("Draw Calls: %llu total (%llu main, %llu shadow, %llu sky, %llu bloom, %llu physics, %llu lod, %llu tonemap)",
+            static_cast<unsigned long long>(renderStats.TotalDrawCalls),
+            static_cast<unsigned long long>(renderStats.MainPassDrawCalls),
+            static_cast<unsigned long long>(renderStats.ShadowPassDrawCalls),
+            static_cast<unsigned long long>(renderStats.SkyDrawCalls),
+            static_cast<unsigned long long>(renderStats.BloomDrawCalls),
+            static_cast<unsigned long long>(renderStats.PhysicsOverlayDrawCalls),
+            static_cast<unsigned long long>(renderStats.LodOverlayDrawCalls),
+            static_cast<unsigned long long>(renderStats.TonemapDrawCalls));
+        ImGui::Text("Fullscreen Passes: sky %llu, bloom %llu, tonemap %llu",
+            static_cast<unsigned long long>(renderStats.SkyDrawCalls),
+            static_cast<unsigned long long>(renderStats.BloomDrawCalls),
+            static_cast<unsigned long long>(renderStats.TonemapDrawCalls));
+        ImGui::Text("Instancing: %llu draws, %llu instances",
+            static_cast<unsigned long long>(renderStats.InstancedDrawCalls),
+            static_cast<unsigned long long>(renderStats.InstancedInstanceCount));
+        ImGui::Text("Triangles: %llu total", static_cast<unsigned long long>(renderStats.TotalTriangles));
+        ImGui::Text("Shadow Quality: %s", renderStats.ShadowMapResolution >= 3072 ? "Ultra" : (renderStats.ShadowMapResolution >= 2048 ? "High" : (renderStats.ShadowMapResolution >= 1536 ? "Medium" : "Low")));
+        ImGui::Text("Shadow Map: %ux%u, distance %.1f, extent %.1f",
+            renderStats.ShadowMapResolution,
+            renderStats.ShadowMapResolution,
+            renderStats.ShadowDistance,
+            renderStats.ShadowHalfExtent);
+        ImGui::Text("Bloom Target: %ux%u (scale %.2f)", renderStats.BloomResolutionWidth, renderStats.BloomResolutionHeight, renderStats.BloomResolutionScale);
+        ImGui::Text("Anti-Aliasing: %s", renderStats.FxaaEnabled ? "FXAA" : "Off");
+        ImGui::Text("State Binds: PSO %llu, VB %llu, IB %llu, Material %llu, Texture %llu",
+            static_cast<unsigned long long>(renderStats.PipelineBinds),
+            static_cast<unsigned long long>(renderStats.VertexBufferBinds),
+            static_cast<unsigned long long>(renderStats.IndexBufferBinds),
+            static_cast<unsigned long long>(renderStats.MaterialBufferBinds),
+            static_cast<unsigned long long>(renderStats.TextureBinds));
         ImGui::Text("hostfxr: %s", managedScriptHost.IsHostFxrAvailable() ? "Ready" : "Unavailable");
         if (!managedScriptHost.GetHostFxrPath().empty())
         {
             ImGui::TextWrapped("hostfxr Path: %s", managedScriptHost.GetHostFxrPath().string().c_str());
         }
         ImGui::TextWrapped("%s", managedScriptHost.GetHostFxrStatus().c_str());
+        if (ImGui::CollapsingHeader("Managed Build", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Text("Ran: %s", managedBuildStatus.HasRun ? "Yes" : "No");
+            ImGui::Text("Success: %s", managedBuildStatus.Succeeded ? "Yes" : "No");
+            ImGui::Text("Exit Code: %d", managedBuildStatus.ExitCode);
+            if (!managedBuildStatus.ScriptPath.empty())
+            {
+                ImGui::TextWrapped("Script: %s", managedBuildStatus.ScriptPath.string().c_str());
+            }
+            if (!managedBuildStatus.StandardOutputPath.empty())
+            {
+                ImGui::TextWrapped("StdOut: %s", managedBuildStatus.StandardOutputPath.string().c_str());
+            }
+            if (!managedBuildStatus.StandardErrorPath.empty())
+            {
+                ImGui::TextWrapped("StdErr: %s", managedBuildStatus.StandardErrorPath.string().c_str());
+            }
+            if (!managedBuildStatus.Summary.empty())
+            {
+                ImGui::TextWrapped("Status: %s", managedBuildStatus.Summary.c_str());
+            }
+        }
+        if (ImGui::CollapsingHeader("Managed Projects", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            for (const auto& project : demoScene.GetManagedScriptProjects())
+            {
+                ImGui::PushID(project.Asset.Value.c_str());
+                ImGui::Separator();
+                ImGui::Text("Asset: %s", project.Asset.Value.c_str());
+                ImGui::Text("Project: %s", project.Name.c_str());
+                ImGui::Text("Exists: %s", project.Exists ? "Yes" : "No");
+                ImGui::Text("Runtime Ready: %s", project.RuntimeReady ? "Yes" : "No");
+                ImGui::Text("Script API Ready: %s", project.ScriptApiReady ? "Yes" : "No");
+                if (!project.Path.empty())
+                {
+                    ImGui::TextWrapped("Project Path: %s", project.Path.string().c_str());
+                }
+                if (!project.RuntimeConfigPath.empty())
+                {
+                    ImGui::TextWrapped("RuntimeConfig: %s", project.RuntimeConfigPath.string().c_str());
+                }
+                if (!project.AssemblyPath.empty())
+                {
+                    ImGui::TextWrapped("Assembly: %s", project.AssemblyPath.string().c_str());
+                }
+                ImGui::TextWrapped("Runtime Status: %s", project.RuntimeStatus.c_str());
+                ImGui::TextWrapped("Script API Status: %s", project.ScriptApiStatus.c_str());
+                ImGui::PopID();
+            }
+        }
         ImGui::Text("Selected Object: %s", selectedObject != nullptr ? selectedObject->Name.c_str() : "None");
         ImGui::End();
     }
@@ -248,6 +386,40 @@ void DebugUI::BeginFrame(
         ImGui::Text("Last GPU Frame: %.3f ms", lastGpuFrameMilliseconds);
         ImGui::Text("Peak GPU Frame: %.3f ms (frame %llu)", peakGpuFrameMilliseconds, static_cast<unsigned long long>(peakGpuFrameIndex));
         ImGui::Text("Captured GPU Frame Index: %llu", static_cast<unsigned long long>(gpuFrameProfile.FrameIndex));
+        ImGui::Separator();
+        ImGui::TextUnformatted("Renderer Stats");
+        ImGui::Text("Draw Calls: %llu", static_cast<unsigned long long>(renderStats.TotalDrawCalls));
+        ImGui::Text("Triangles: %llu", static_cast<unsigned long long>(renderStats.TotalTriangles));
+        ImGui::Text("Visible Meshes: %llu / %llu", static_cast<unsigned long long>(renderStats.MainPassVisibleMeshCount), static_cast<unsigned long long>(renderStats.MeshRendererCount));
+        ImGui::Text("Render Proxies: %llu", static_cast<unsigned long long>(renderStats.RenderProxyCount));
+        ImGui::Text("Internal Render: %ux%u (scale %.2f)",
+            renderStats.InternalRenderWidth,
+            renderStats.InternalRenderHeight,
+            renderStats.RenderScale);
+        ImGui::Text("Quality Preset: %s", Pragma::Core::ToString(renderStats.QualityPreset));
+        ImGui::Text("Shading Quality: %s", Pragma::Core::ToString(renderStats.ShadingQuality));
+        ImGui::Text("Cached World Transforms: %llu", static_cast<unsigned long long>(renderStats.CachedWorldTransformCount));
+        ImGui::Text("Shadow Casters: %llu / %llu (%llu LOD-skipped)",
+            static_cast<unsigned long long>(renderStats.ShadowPassVisibleMeshCount),
+            static_cast<unsigned long long>(renderStats.MeshRendererCount),
+            static_cast<unsigned long long>(renderStats.ShadowPassLodSkippedMeshCount));
+        ImGui::Text("LOD: %s (%llu/%llu/%llu)",
+            renderStats.LodEnabled ? "On" : "Off",
+            static_cast<unsigned long long>(renderStats.HighLodMeshCount),
+            static_cast<unsigned long long>(renderStats.MediumLodMeshCount),
+            static_cast<unsigned long long>(renderStats.LowLodMeshCount));
+        ImGui::Text("LOD Overlay: %llu objects, %llu draws",
+            static_cast<unsigned long long>(renderStats.LodOverlayObjectCount),
+            static_cast<unsigned long long>(renderStats.LodOverlayDrawCalls));
+        ImGui::Text("Instancing: %llu draws, %llu instances",
+            static_cast<unsigned long long>(renderStats.InstancedDrawCalls),
+            static_cast<unsigned long long>(renderStats.InstancedInstanceCount));
+        ImGui::Text("Shadow Map: %ux%u", renderStats.ShadowMapResolution, renderStats.ShadowMapResolution);
+        ImGui::Text("Shadow Distance: %.1f", renderStats.ShadowDistance);
+        ImGui::Text("Bloom Target: %ux%u (scale %.2f)", renderStats.BloomResolutionWidth, renderStats.BloomResolutionHeight, renderStats.BloomResolutionScale);
+        ImGui::Text("Anti-Aliasing: %s", renderStats.FxaaEnabled ? "FXAA" : "Off");
+        ImGui::Text("Pipeline Binds: %llu", static_cast<unsigned long long>(renderStats.PipelineBinds));
+        ImGui::Text("Texture Binds: %llu", static_cast<unsigned long long>(renderStats.TextureBinds));
         ImGui::Separator();
         if (!gpuFrameProfile.IsValid || gpuFrameProfile.Events.empty())
         {
@@ -322,5 +494,10 @@ void DebugUI::ApplyPendingSceneActions(Pragma::Core::DemoScene& demoScene)
 bool DebugUI::IsPhysicsOverlayEnabled() const noexcept
 {
     return m_editorUi != nullptr && m_editorUi->IsPhysicsOverlayEnabled();
+}
+
+bool DebugUI::IsLodOverlayEnabled() const noexcept
+{
+    return m_editorUi != nullptr && m_editorUi->IsLodOverlayEnabled();
 }
 }

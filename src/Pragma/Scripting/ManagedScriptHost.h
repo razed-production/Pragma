@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Pragma/Assets/AssetId.h"
+#include "Pragma/Core/EngineInput.h"
 #include "Pragma/Scripting/DotNetHostFxr.h"
 #include "Pragma/Renderer/Entity.h"
 
@@ -49,6 +50,7 @@ struct ManagedScriptTimeSnapshot
     float DeltaSeconds = 0.0f;
     float ElapsedSeconds = 0.0f;
     std::uint64_t FrameIndex = 0;
+    const Pragma::Core::EngineInput* Input = nullptr;
 };
 
 struct ManagedScriptTypeMetadata

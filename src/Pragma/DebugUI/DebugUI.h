@@ -20,6 +20,11 @@ namespace Pragma::Physics
 class PhysicsSystem;
 }
 
+namespace Pragma::Renderer
+{
+class RenderSystem;
+}
+
 namespace Pragma::Scripting
 {
 class ManagedScriptHost;
@@ -45,11 +50,13 @@ public:
     void BeginFrame(
         float deltaSeconds,
         Pragma::Core::DemoScene& demoScene,
+        Pragma::Renderer::RenderSystem& renderSystem,
         Pragma::Physics::PhysicsSystem& physicsSystem,
         Pragma::Scripting::ManagedScriptHost& managedScriptHost);
     void Render();
     void ApplyPendingSceneActions(Pragma::Core::DemoScene& demoScene);
     [[nodiscard]] bool IsPhysicsOverlayEnabled() const noexcept;
+    [[nodiscard]] bool IsLodOverlayEnabled() const noexcept;
 
 private:
     bool m_initialized = false;

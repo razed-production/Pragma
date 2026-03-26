@@ -111,6 +111,16 @@ struct Matrix4
     return result;
 }
 
+[[nodiscard]] inline Matrix4 OrthographicRH(const float width, const float height, const float nearPlane, const float farPlane) noexcept
+{
+    Matrix4 result = Identity();
+    result.M[0][0] = 2.0f / width;
+    result.M[1][1] = 2.0f / height;
+    result.M[2][2] = 1.0f / (nearPlane - farPlane);
+    result.M[3][2] = nearPlane / (nearPlane - farPlane);
+    return result;
+}
+
 [[nodiscard]] inline Matrix4 LookAtRH(const Vector3& eye, const Vector3& target, const Vector3& up) noexcept
 {
     const Vector3 forward = Normalize(eye - target);

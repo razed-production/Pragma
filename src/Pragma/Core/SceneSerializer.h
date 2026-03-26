@@ -20,6 +20,8 @@ namespace Pragma::Core
 struct SerializedMeshRenderer
 {
     Pragma::Assets::AssetId MeshAsset;
+    Pragma::Assets::AssetId MediumLodMeshAsset;
+    Pragma::Assets::AssetId LowLodMeshAsset;
     Pragma::Assets::AssetId MaterialAsset;
 };
 
@@ -44,7 +46,7 @@ struct SerializedSceneObject
 
 struct SerializedScene
 {
-    std::uint32_t Version = 11;
+    std::uint32_t Version = 12;
     std::vector<SerializedSceneObject> Objects;
 };
 

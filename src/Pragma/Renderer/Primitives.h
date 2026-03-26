@@ -14,4 +14,5 @@ namespace Pragma::Renderer
 {
 [[nodiscard]] std::shared_ptr<Mesh> CreateCubeMesh(Pragma::RHI::IDevice& device);
 [[nodiscard]] std::shared_ptr<Material> CreateDefaultMaterial(Pragma::RHI::IDevice& device);
+[[nodiscard]] std::shared_ptr<Material> CreateWireframeDebugMaterial(Pragma::RHI::IDevice& device);
 }

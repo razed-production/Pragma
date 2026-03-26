@@ -9,7 +9,7 @@
 
 namespace
 {
-constexpr std::uint32_t kLatestPrefabVersion = 1;
+constexpr std::uint32_t kLatestPrefabVersion = 2;
 constexpr std::uint32_t kMinimumSupportedPrefabVersion = 1;
 
 std::string Trim(std::string value)
@@ -361,6 +361,14 @@ SerializedPrefab LoadPrefabFromFile(const std::filesystem::path& path)
             {
                 ensureMeshRenderer().MeshAsset.Value = value;
             }
+            else if (key == "mesh.lod1.asset")
+            {
+                ensureMeshRenderer().MediumLodMeshAsset.Value = value;
+            }
+            else if (key == "mesh.lod2.asset")
+            {
+                ensureMeshRenderer().LowLodMeshAsset.Value = value;
+            }
             else if (key == "material.asset")
             {
                 ensureMeshRenderer().MaterialAsset.Value = value;
@@ -592,6 +600,14 @@ void SavePrefabToFile(const SerializedPrefab& prefab, const std::filesystem::pat
         if (object.MeshRenderer.has_value())
         {
             output << "mesh.asset=" << object.MeshRenderer->MeshAsset.Value << '\n';
+            if (!object.MeshRenderer->MediumLodMeshAsset.empty())
+            {
+                output << "mesh.lod1.asset=" << object.MeshRenderer->MediumLodMeshAsset.Value << '\n';
+            }
+            if (!object.MeshRenderer->LowLodMeshAsset.empty())
+            {
+                output << "mesh.lod2.asset=" << object.MeshRenderer->LowLodMeshAsset.Value << '\n';
+            }
             output << "material.asset=" << object.MeshRenderer->MaterialAsset.Value << '\n';
         }
 

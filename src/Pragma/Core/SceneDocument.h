@@ -64,6 +64,10 @@ public:
     [[nodiscard]] bool AddComponent(Pragma::Renderer::EntityId id, Pragma::Renderer::ComponentType componentType);
     [[nodiscard]] bool RemoveComponent(Pragma::Renderer::EntityId id, Pragma::Renderer::ComponentType componentType);
     [[nodiscard]] bool SetMaterialAsset(Pragma::Renderer::EntityId id, const Pragma::Assets::AssetId& materialAssetId);
+    [[nodiscard]] bool SetMeshAsset(
+        Pragma::Renderer::EntityId id,
+        Pragma::Renderer::MeshLodSlot slot,
+        const Pragma::Assets::AssetId& meshAssetId);
     [[nodiscard]] Pragma::Renderer::EntityId InstantiatePrefab(
         const Pragma::Assets::AssetId& prefabAssetId,
         Pragma::Renderer::EntityId parentId = Pragma::Renderer::InvalidEntityId);

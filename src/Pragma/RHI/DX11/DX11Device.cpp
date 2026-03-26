@@ -7,6 +7,7 @@
 #include "Pragma/RHI/DX11/DX11Swapchain.h"
 
 #include <cstring>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -239,16 +240,30 @@ DX11Device::DX11Device()
     m_device.As(&m_infoQueue);
 
     D3D11_SAMPLER_DESC samplerDesc{};
-    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.MaxAnisotropy = 8;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
     result = m_device->CreateSamplerState(&samplerDesc, &m_defaultSampler);
     if (FAILED(result))
     {
         throw std::runtime_error("Failed to create DX11 sampler state.");
+    }
+
+    D3D11_SAMPLER_DESC shadowSamplerDesc{};
+    shadowSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    shadowSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    result = m_device->CreateSamplerState(&shadowSamplerDesc, &m_shadowSampler);
+    if (FAILED(result))
+    {
+        throw std::runtime_error("Failed to create DX11 shadow sampler state.");
     }
 
     D3D11_QUERY_DESC disjointQueryDesc{};
@@ -267,6 +282,21 @@ DX11Device::DX11Device()
             m_gpuProfilingEnabled = false;
             break;
         }
+
+        for (GpuFrameQueries::GpuScopeQueries& scopeQueries : frameQueries.ScopeQueries)
+        {
+            if (FAILED(m_device->CreateQuery(&timestampQueryDesc, &scopeQueries.StartTimestampQuery)) ||
+                FAILED(m_device->CreateQuery(&timestampQueryDesc, &scopeQueries.EndTimestampQuery)))
+            {
+                m_gpuProfilingEnabled = false;
+                break;
+            }
+        }
+
+        if (!m_gpuProfilingEnabled)
+        {
+            break;
+        }
     }
 
     if (!m_gpuProfilingEnabled)
@@ -276,8 +306,19 @@ DX11Device::DX11Device()
             frameQueries.DisjointQuery.Reset();
             frameQueries.StartTimestampQuery.Reset();
             frameQueries.EndTimestampQuery.Reset();
-            frameQueries.InFlight = false;
+        for (GpuFrameQueries::GpuScopeQueries& scopeQueries : frameQueries.ScopeQueries)
+        {
+            scopeQueries.StartTimestampQuery.Reset();
+            scopeQueries.EndTimestampQuery.Reset();
+            scopeQueries.Name.clear();
+            scopeQueries.Used = false;
         }
+        frameQueries.ScopeCount = 0;
+        frameQueries.ResolveCooldownFrames = 0;
+        frameQueries.ActiveScopeIndex = -1;
+        frameQueries.CaptureOpen = false;
+        frameQueries.ResolvePending = false;
+    }
 
         Pragma::Core::Log(
             Pragma::Core::LogCategory::RHI,
@@ -340,16 +381,23 @@ std::unique_ptr<ITexture> DX11Device::CreateTexture(const TextureDesc& desc, con
     textureDesc.Usage = ToD3DUsage(desc.Usage);
     textureDesc.BindFlags = ToD3DBindFlags(desc.BindMask);
 
-    D3D11_SUBRESOURCE_DATA subresourceData{};
+    std::vector<D3D11_SUBRESOURCE_DATA> subresourceData;
+    const D3D11_SUBRESOURCE_DATA* initialDataPtr = nullptr;
     if (initialData != nullptr)
     {
-        subresourceData.pSysMem = initialData->Data;
-        subresourceData.SysMemPitch = initialData->RowPitch;
-        subresourceData.SysMemSlicePitch = initialData->SlicePitch;
+        const std::uint32_t subresourceCount = desc.MipLevels * desc.DepthOrArraySize;
+        subresourceData.resize(subresourceCount);
+        for (std::uint32_t subresourceIndex = 0; subresourceIndex < subresourceCount; ++subresourceIndex)
+        {
+            subresourceData[subresourceIndex].pSysMem = initialData[subresourceIndex].Data;
+            subresourceData[subresourceIndex].SysMemPitch = initialData[subresourceIndex].RowPitch;
+            subresourceData[subresourceIndex].SysMemSlicePitch = initialData[subresourceIndex].SlicePitch;
+        }
+        initialDataPtr = subresourceData.data();
     }
 
     Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
-    HRESULT result = m_device->CreateTexture2D(&textureDesc, initialData != nullptr ? &subresourceData : nullptr, &texture);
+    HRESULT result = m_device->CreateTexture2D(&textureDesc, initialDataPtr, &texture);
     if (FAILED(result))
     {
         throw std::runtime_error("Failed to create DX11 texture.");
@@ -444,16 +492,20 @@ std::unique_ptr<IPipelineState> DX11Device::CreateGraphicsPipeline(const Graphic
     }
 
     Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
-    HRESULT result = m_device->CreateInputLayout(
-        inputElements.data(),
-        static_cast<UINT>(inputElements.size()),
-        dxVertexShader.GetBytecode()->GetBufferPointer(),
-        dxVertexShader.GetBytecode()->GetBufferSize(),
-        &inputLayout);
-
-    if (FAILED(result))
+    HRESULT result = S_OK;
+    if (!inputElements.empty())
     {
-        throw std::runtime_error("Failed to create DX11 input layout.");
+        result = m_device->CreateInputLayout(
+            inputElements.data(),
+            static_cast<UINT>(inputElements.size()),
+            dxVertexShader.GetBytecode()->GetBufferPointer(),
+            dxVertexShader.GetBytecode()->GetBufferSize(),
+            &inputLayout);
+
+        if (FAILED(result))
+        {
+            throw std::runtime_error("Failed to create DX11 input layout.");
+        }
     }
 
     D3D11_RASTERIZER_DESC rasterizerDesc{};
@@ -525,7 +577,10 @@ void DX11Device::UpdateBuffer(IBuffer& buffer, const void* data, const std::uint
 
 void DX11Device::Submit(ICommandList&)
 {
-    ResolveGpuFrameProfiles();
+    if (m_activeGpuFrameQueryIndex < 0)
+    {
+        ResolveGpuFrameProfiles();
+    }
     DrainDebugMessages();
 }
 
@@ -542,6 +597,11 @@ ID3D11DeviceContext* DX11Device::GetImmediateContext() const noexcept
 ID3D11SamplerState* DX11Device::GetDefaultSampler() const noexcept
 {
     return m_defaultSampler.Get();
+}
+
+ID3D11SamplerState* DX11Device::GetShadowSampler() const noexcept
+{
+    return m_shadowSampler.Get();
 }
 
 IDXGIFactory2* DX11Device::GetFactory() const noexcept
@@ -561,29 +621,39 @@ void DX11Device::SetActiveSwapchain(DX11Swapchain* swapchain) noexcept
 
 void DX11Device::BeginGpuFrameProfile(const std::uint64_t frameIndex)
 {
-    if (!m_gpuProfilingEnabled)
+    if (!m_gpuProfilingEnabled || m_gpuBaselineCaptured)
     {
         return;
     }
 
     ResolveGpuFrameProfiles();
 
-    GpuFrameQueries& frameQueries = m_gpuFrameQueries[m_gpuFrameWriteIndex];
-    if (frameQueries.InFlight)
+    if (m_gpuBaselineCaptured)
     {
-        if (!m_gpuProfilingSaturatedWarningLogged)
-        {
-            m_gpuProfilingSaturatedWarningLogged = true;
-            Pragma::Core::Log(
-                Pragma::Core::LogCategory::RHI,
-                Pragma::Core::LogLevel::Warning,
-                "DX11 GPU profiler query ring is saturated. Skipping GPU frame capture until the GPU catches up.");
-        }
         return;
     }
 
+    for (const GpuFrameQueries& existingFrameQueries : m_gpuFrameQueries)
+    {
+        if (existingFrameQueries.CaptureOpen || existingFrameQueries.ResolvePending)
+        {
+            return;
+        }
+    }
+
+    GpuFrameQueries& frameQueries = m_gpuFrameQueries[m_gpuFrameWriteIndex];
+
     frameQueries.FrameIndex = frameIndex;
-    frameQueries.InFlight = true;
+    frameQueries.CaptureOpen = true;
+    frameQueries.ResolvePending = false;
+    frameQueries.ScopeCount = 0;
+    frameQueries.ResolveCooldownFrames = 0;
+    frameQueries.ActiveScopeIndex = -1;
+    for (GpuFrameQueries::GpuScopeQueries& scopeQueries : frameQueries.ScopeQueries)
+    {
+        scopeQueries.Name.clear();
+        scopeQueries.Used = false;
+    }
     m_activeGpuFrameQueryIndex = static_cast<std::int32_t>(m_gpuFrameWriteIndex);
 
     m_context->Begin(frameQueries.DisjointQuery.Get());
@@ -598,11 +668,61 @@ void DX11Device::EndGpuFrameProfile()
     }
 
     GpuFrameQueries& frameQueries = m_gpuFrameQueries[static_cast<std::size_t>(m_activeGpuFrameQueryIndex)];
+    if (frameQueries.ActiveScopeIndex >= 0)
+    {
+        GpuFrameQueries::GpuScopeQueries& activeScope = frameQueries.ScopeQueries[static_cast<std::size_t>(frameQueries.ActiveScopeIndex)];
+        m_context->End(activeScope.EndTimestampQuery.Get());
+        frameQueries.ActiveScopeIndex = -1;
+    }
+
     m_context->End(frameQueries.EndTimestampQuery.Get());
     m_context->End(frameQueries.DisjointQuery.Get());
+    m_context->Flush();
+    frameQueries.CaptureOpen = false;
+    frameQueries.ResolvePending = true;
+    frameQueries.ResolveCooldownFrames = 2;
 
     m_gpuFrameWriteIndex = (m_gpuFrameWriteIndex + 1) % m_gpuFrameQueries.size();
     m_activeGpuFrameQueryIndex = -1;
+}
+
+void DX11Device::BeginGpuScope(const std::string_view name)
+{
+    if (!m_gpuProfilingEnabled || m_activeGpuFrameQueryIndex < 0)
+    {
+        return;
+    }
+
+    GpuFrameQueries& frameQueries = m_gpuFrameQueries[static_cast<std::size_t>(m_activeGpuFrameQueryIndex)];
+    if (frameQueries.ActiveScopeIndex >= 0 || frameQueries.ScopeCount >= frameQueries.ScopeQueries.size())
+    {
+        return;
+    }
+
+    GpuFrameQueries::GpuScopeQueries& scopeQueries = frameQueries.ScopeQueries[frameQueries.ScopeCount];
+    scopeQueries.Name.assign(name.data(), name.size());
+    scopeQueries.Used = true;
+    frameQueries.ActiveScopeIndex = static_cast<std::int32_t>(frameQueries.ScopeCount);
+    ++frameQueries.ScopeCount;
+    m_context->End(scopeQueries.StartTimestampQuery.Get());
+}
+
+void DX11Device::EndGpuScope()
+{
+    if (!m_gpuProfilingEnabled || m_activeGpuFrameQueryIndex < 0)
+    {
+        return;
+    }
+
+    GpuFrameQueries& frameQueries = m_gpuFrameQueries[static_cast<std::size_t>(m_activeGpuFrameQueryIndex)];
+    if (frameQueries.ActiveScopeIndex < 0)
+    {
+        return;
+    }
+
+    GpuFrameQueries::GpuScopeQueries& scopeQueries = frameQueries.ScopeQueries[static_cast<std::size_t>(frameQueries.ActiveScopeIndex)];
+    m_context->End(scopeQueries.EndTimestampQuery.Get());
+    frameQueries.ActiveScopeIndex = -1;
 }
 
 Microsoft::WRL::ComPtr<ID3DBlob> DX11Device::CompileShader(const ShaderDesc& desc) const
@@ -681,8 +801,14 @@ void DX11Device::ResolveGpuFrameProfiles()
 
     for (GpuFrameQueries& frameQueries : m_gpuFrameQueries)
     {
-        if (!frameQueries.InFlight)
+        if (!frameQueries.ResolvePending || frameQueries.CaptureOpen)
         {
+            continue;
+        }
+
+        if (frameQueries.ResolveCooldownFrames > 0)
+        {
+            --frameQueries.ResolveCooldownFrames;
             continue;
         }
 
@@ -719,13 +845,62 @@ void DX11Device::ResolveGpuFrameProfiles()
             continue;
         }
 
-        frameQueries.InFlight = false;
-        m_gpuProfilingSaturatedWarningLogged = false;
-
         if (disjointData.Disjoint || disjointData.Frequency == 0 || endTimestamp < startTimestamp)
+        {
+            frameQueries.CaptureOpen = false;
+            frameQueries.ResolvePending = false;
+            m_gpuProfilingSaturatedWarningLogged = false;
+            continue;
+        }
+
+        std::vector<Pragma::Core::GpuProfileEvent> scopeEvents;
+        scopeEvents.reserve(frameQueries.ScopeCount);
+        bool allScopeQueriesReady = true;
+        for (std::uint32_t scopeIndex = 0; scopeIndex < frameQueries.ScopeCount; ++scopeIndex)
+        {
+            const GpuFrameQueries::GpuScopeQueries& scopeQueries = frameQueries.ScopeQueries[scopeIndex];
+            if (!scopeQueries.Used || scopeQueries.Name.empty())
+            {
+                continue;
+            }
+
+            UINT64 scopeStartTimestamp = 0;
+            const HRESULT scopeStartResult = m_context->GetData(
+                scopeQueries.StartTimestampQuery.Get(),
+                &scopeStartTimestamp,
+                sizeof(scopeStartTimestamp),
+                0);
+            if (scopeStartResult != S_OK)
+            {
+                allScopeQueriesReady = false;
+                break;
+            }
+
+            UINT64 scopeEndTimestamp = 0;
+            const HRESULT scopeEndResult = m_context->GetData(
+                scopeQueries.EndTimestampQuery.Get(),
+                &scopeEndTimestamp,
+                sizeof(scopeEndTimestamp),
+                0);
+            if (scopeEndResult != S_OK || scopeEndTimestamp < scopeStartTimestamp)
+            {
+                allScopeQueriesReady = false;
+                break;
+            }
+
+            const double scopeMilliseconds =
+                static_cast<double>(scopeEndTimestamp - scopeStartTimestamp) * 1000.0 / static_cast<double>(disjointData.Frequency);
+            scopeEvents.push_back({ scopeQueries.Name, scopeMilliseconds });
+        }
+
+        if (!allScopeQueriesReady)
         {
             continue;
         }
+
+        frameQueries.CaptureOpen = false;
+        frameQueries.ResolvePending = false;
+        m_gpuProfilingSaturatedWarningLogged = false;
 
         Pragma::Core::GpuFrameProfile gpuFrameProfile{};
         gpuFrameProfile.FrameIndex = frameQueries.FrameIndex;
@@ -733,7 +908,29 @@ void DX11Device::ResolveGpuFrameProfiles()
             static_cast<double>(endTimestamp - startTimestamp) * 1000.0 / static_cast<double>(disjointData.Frequency);
         gpuFrameProfile.IsValid = true;
         gpuFrameProfile.Events.push_back({ "Frame GPU", gpuFrameProfile.TotalMilliseconds });
+        for (const Pragma::Core::GpuProfileEvent& scopeEvent : scopeEvents)
+        {
+            gpuFrameProfile.Events.push_back(scopeEvent);
+        }
         Pragma::Core::SubmitGpuFrameProfile(gpuFrameProfile);
+
+        static bool hasLoggedFirstGpuFrameProfile = false;
+        if (!hasLoggedFirstGpuFrameProfile)
+        {
+            hasLoggedFirstGpuFrameProfile = true;
+            m_gpuBaselineCaptured = true;
+            std::ostringstream message;
+            message << "GPU stats baseline: total=" << gpuFrameProfile.TotalMilliseconds << " ms";
+            for (std::size_t eventIndex = 1; eventIndex < gpuFrameProfile.Events.size(); ++eventIndex)
+            {
+                message << ", " << gpuFrameProfile.Events[eventIndex].Name << "=" << gpuFrameProfile.Events[eventIndex].DurationMilliseconds << " ms";
+            }
+
+            Pragma::Core::Log(
+                Pragma::Core::LogCategory::RHI,
+                Pragma::Core::LogLevel::Info,
+                message.str());
+        }
     }
 }
 }

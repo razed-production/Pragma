@@ -9,14 +9,26 @@
 
 namespace Pragma::Renderer
 {
+enum class MeshLodSlot
+{
+    Base,
+    Lod1,
+    Lod2
+};
+
 struct MeshRendererComponent final : public SceneComponent
 {
     static constexpr ComponentType kType = ComponentType::MeshRenderer;
     static constexpr const char* kName = "Mesh Renderer";
 
-    std::shared_ptr<Mesh> Mesh;
+    Pragma::Assets::AssetId MeshAssetId;
+    Pragma::Assets::AssetId MediumLodMeshAssetId;
+    Pragma::Assets::AssetId LowLodMeshAssetId;
+    std::shared_ptr<Pragma::Renderer::Mesh> Mesh;
+    std::shared_ptr<Pragma::Renderer::Mesh> MediumLodMesh;
+    std::shared_ptr<Pragma::Renderer::Mesh> LowLodMesh;
     Pragma::Assets::AssetId MaterialAssetId;
-    std::shared_ptr<Material> Material;
+    std::shared_ptr<Pragma::Renderer::Material> Material;
 
     [[nodiscard]] ComponentType GetComponentType() const noexcept override
     {

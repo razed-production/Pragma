@@ -2,7 +2,9 @@
 
 #include "Pragma/Math/Vector3.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -207,6 +209,45 @@ MeshAssetData LoadObjMesh(const std::filesystem::path& path)
     {
         throw std::runtime_error("OBJ file does not contain any renderable geometry.");
     }
+
+    Pragma::Math::Vector3 minBounds
+    {
+        result.Vertices[0].Position[0],
+        result.Vertices[0].Position[1],
+        result.Vertices[0].Position[2]
+    };
+    Pragma::Math::Vector3 maxBounds = minBounds;
+
+    for (const Pragma::Renderer::VertexPCN& vertex : result.Vertices)
+    {
+        minBounds.X = std::min(minBounds.X, vertex.Position[0]);
+        minBounds.Y = std::min(minBounds.Y, vertex.Position[1]);
+        minBounds.Z = std::min(minBounds.Z, vertex.Position[2]);
+        maxBounds.X = std::max(maxBounds.X, vertex.Position[0]);
+        maxBounds.Y = std::max(maxBounds.Y, vertex.Position[1]);
+        maxBounds.Z = std::max(maxBounds.Z, vertex.Position[2]);
+    }
+
+    result.LocalBoundsCenter =
+    {
+        (minBounds.X + maxBounds.X) * 0.5f,
+        (minBounds.Y + maxBounds.Y) * 0.5f,
+        (minBounds.Z + maxBounds.Z) * 0.5f
+    };
+
+    float maxRadiusSquared = 0.0f;
+    for (const Pragma::Renderer::VertexPCN& vertex : result.Vertices)
+    {
+        const Pragma::Math::Vector3 localPosition
+        {
+            vertex.Position[0],
+            vertex.Position[1],
+            vertex.Position[2]
+        };
+        const Pragma::Math::Vector3 offset = localPosition - result.LocalBoundsCenter;
+        maxRadiusSquared = std::max(maxRadiusSquared, Pragma::Math::Dot(offset, offset));
+    }
+    result.LocalBoundsRadius = std::sqrt(maxRadiusSquared);
 
     return result;
 }
