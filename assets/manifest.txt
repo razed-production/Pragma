@@ -1,6 +1,11 @@
 # Pragma asset manifest
 mesh.cube=models/cube.obj
+mesh.cube_lod1=models/cube_lod1.obj
+mesh.cube_lod2=models/cube_lod2.obj
 texture.checker=textures/checker.ppm
+texture.checker_normal=textures/checker_normal.ppm
+texture.checker_orm=textures/checker_orm.ppm
+texture.checker_emissive=textures/checker_emissive.ppm
 material.default_checker=materials/default_checker.mat
 material.warm=materials/warm.mat
 material.cool=materials/cool.mat
@@ -10,3 +15,4 @@ material.physics_b=materials/physics_b.mat
 prefab.spin_cluster=prefabs/spin_cluster.prefab
 script_project.pragma_managed=scripts/Pragma.Managed/Pragma.Managed.csproj
 scene.demo=scenes/demo.scene
+scene.lod_benchmark=scenes/lod_benchmark.scene

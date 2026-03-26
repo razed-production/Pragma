@@ -1,5 +1,5 @@
 # Pragma scene file
-version=11
+version=12
 
 scene_object
 id=1
@@ -26,6 +26,8 @@ position=0.0,0.0,0.0
 scale=1.0,1.0,1.0
 rotation=0.0,0.0,0.0
 mesh.asset=mesh.cube
+mesh.lod1.asset=mesh.cube_lod1
+mesh.lod2.asset=mesh.cube_lod2
 material.asset=material.default_checker
 script=Spin.Center
 end
@@ -38,6 +40,8 @@ position=3.0,0.0,-2.5
 scale=1.0,1.0,1.0
 rotation=0.0,0.35,0.0
 mesh.asset=mesh.cube
+mesh.lod1.asset=mesh.cube_lod1
+mesh.lod2.asset=mesh.cube_lod2
 material.asset=material.warm
 script=Spin.Warm
 end
@@ -50,6 +54,8 @@ position=-3.5,0.5,1.5
 scale=1.0,1.0,1.0
 rotation=0.0,-0.5,0.0
 mesh.asset=mesh.cube
+mesh.lod1.asset=mesh.cube_lod1
+mesh.lod2.asset=mesh.cube_lod2
 material.asset=material.cool
 script=Spin.Cool
 end
@@ -62,6 +68,8 @@ position=1.5,-1.0,4.0
 scale=1.0,1.0,1.0
 rotation=0.0,1.0,0.0
 mesh.asset=mesh.cube
+mesh.lod1.asset=mesh.cube_lod1
+mesh.lod2.asset=mesh.cube_lod2
 material.asset=material.default_checker
 managed_script.project=script_project.pragma_managed
 managed_script.type=Pragma.Managed.Scripts.FloatUpManagedScript

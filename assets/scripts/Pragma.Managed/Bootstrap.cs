@@ -47,6 +47,38 @@ namespace Pragma.Managed
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct ManagedRigidBodySnapshot
+    {
+        public int Enabled;
+        public int MotionType;
+        public int CollisionLayer;
+        public float Friction;
+        public float Restitution;
+        public float LinearDamping;
+        public float AngularDamping;
+        public float GravityFactor;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ManagedInputSnapshot
+    {
+        public int MoveForward;
+        public int MoveBackward;
+        public int MoveLeft;
+        public int MoveRight;
+        public int MoveUp;
+        public int MoveDown;
+        public int LookLeft;
+        public int LookRight;
+        public int LookUp;
+        public int LookDown;
+        public int FastMove;
+        public int RightMouseButtonDown;
+        public int MouseDeltaX;
+        public int MouseDeltaY;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct ManagedBindings
     {
         public IntPtr LogCallback;
@@ -64,6 +96,9 @@ namespace Pragma.Managed
         public IntPtr SetCamera;
         public IntPtr GetLight;
         public IntPtr SetLight;
+        public IntPtr GetRigidBody;
+        public IntPtr SetRigidBody;
+        public IntPtr GetInputSnapshot;
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -111,6 +146,15 @@ namespace Pragma.Managed
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int SetLightCallback(IntPtr sceneContext, ulong entityId, ref ManagedLightSnapshot light);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int GetRigidBodyCallback(IntPtr sceneContext, ulong entityId, out ManagedRigidBodySnapshot rigidBody);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int SetRigidBodyCallback(IntPtr sceneContext, ulong entityId, ref ManagedRigidBodySnapshot rigidBody);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate int GetInputSnapshotCallback(IntPtr sceneContext, out ManagedInputSnapshot input);
+
     internal sealed class ManagedApiContext
     {
         private readonly IntPtr _sceneContext;
@@ -129,6 +173,9 @@ namespace Pragma.Managed
         private readonly SetCameraCallback _setCamera;
         private readonly GetLightCallback _getLight;
         private readonly SetLightCallback _setLight;
+        private readonly GetRigidBodyCallback _getRigidBody;
+        private readonly SetRigidBodyCallback _setRigidBody;
+        private readonly GetInputSnapshotCallback _getInputSnapshot;
         private readonly ManagedTimeSnapshot _time;
 
         public ManagedApiContext(ManagedTimeSnapshot time, ManagedBindings bindings, IntPtr sceneContext)
@@ -164,6 +211,12 @@ namespace Pragma.Managed
                 (GetLightCallback)Marshal.GetDelegateForFunctionPointer(bindings.GetLight, typeof(GetLightCallback));
             _setLight =
                 (SetLightCallback)Marshal.GetDelegateForFunctionPointer(bindings.SetLight, typeof(SetLightCallback));
+            _getRigidBody =
+                (GetRigidBodyCallback)Marshal.GetDelegateForFunctionPointer(bindings.GetRigidBody, typeof(GetRigidBodyCallback));
+            _setRigidBody =
+                (SetRigidBodyCallback)Marshal.GetDelegateForFunctionPointer(bindings.SetRigidBody, typeof(SetRigidBodyCallback));
+            _getInputSnapshot =
+                (GetInputSnapshotCallback)Marshal.GetDelegateForFunctionPointer(bindings.GetInputSnapshot, typeof(GetInputSnapshotCallback));
         }
 
         public ManagedTimeSnapshot Time
@@ -277,6 +330,21 @@ namespace Pragma.Managed
         {
             return _setLight(_sceneContext, entityId, ref light) != 0;
         }
+
+        public bool TryGetRigidBody(ulong entityId, out ManagedRigidBodySnapshot rigidBody)
+        {
+            return _getRigidBody(_sceneContext, entityId, out rigidBody) != 0;
+        }
+
+        public bool SetRigidBody(ulong entityId, ref ManagedRigidBodySnapshot rigidBody)
+        {
+            return _setRigidBody(_sceneContext, entityId, ref rigidBody) != 0;
+        }
+
+        public bool TryGetInputSnapshot(out ManagedInputSnapshot input)
+        {
+            return _getInputSnapshot(_sceneContext, out input) != 0;
+        }
     }
 
     internal abstract class ManagedScriptBase
@@ -325,13 +393,18 @@ namespace Pragma.Managed.Scripts
             ulong lightEntityId = context.FindEntityByName("Sun Light");
             ManagedLightSnapshot sunLight = new ManagedLightSnapshot();
             bool hasSunLight = lightEntityId != 0 && context.TryGetLight(lightEntityId, out sunLight);
+            ulong physicsCubeId = context.FindEntityByName("Physics Cube A");
+            ManagedRigidBodySnapshot physicsBody = new ManagedRigidBodySnapshot();
+            bool hasPhysicsBody = physicsCubeId != 0 && context.TryGetRigidBody(physicsCubeId, out physicsBody);
+            ManagedInputSnapshot input = new ManagedInputSnapshot();
+            bool hasInput = context.TryGetInputSnapshot(out input);
 
             if (context.TryGetTransform(EntityId, out _baseTransform))
             {
                 _hasBaseTransform = true;
                 context.Log(
                     string.Format(
-                        "Managed script OnStart: entity={0}, name='{1}', valid={2}, parent={3}, children={4}, activeCamera={5}, cameraFov={6:F3}, light={7}, lightIntensity={8:F3}, entities={9}, baseY={10:F3}",
+                        "Managed script OnStart: entity={0}, name='{1}', valid={2}, parent={3}, children={4}, activeCamera={5}, cameraFov={6:F3}, light={7}, lightIntensity={8:F3}, rigidBody={9}, motion={10}, gravity={11:F3}, input={12}, forward={13}, fast={14}, entities={15}, baseY={16:F3}",
                         EntityId,
                         entityName,
                         isValid ? "yes" : "no",
@@ -341,6 +414,12 @@ namespace Pragma.Managed.Scripts
                         hasActiveCamera ? activeCamera.FieldOfViewRadians : -1.0f,
                         lightEntityId,
                         hasSunLight ? sunLight.Intensity : -1.0f,
+                        physicsCubeId,
+                        hasPhysicsBody ? physicsBody.MotionType : -1,
+                        hasPhysicsBody ? physicsBody.GravityFactor : -1.0f,
+                        hasInput ? "yes" : "no",
+                        hasInput && input.MoveForward != 0 ? "yes" : "no",
+                        hasInput && input.FastMove != 0 ? "yes" : "no",
                         entityCount,
                         _baseTransform.Position.Y));
             }

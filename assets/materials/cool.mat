@@ -1,5 +1,9 @@
 # Pragma material asset
-version=1
-base_color=0.55,0.78,1.0,1.0
+version=2
+base_color=0.550000,0.780000,1.000000,1.000000
+emissive_color=0.000000,0.000000,0.000000
 roughness=0.65
+metallic=1
+ambient_occlusion=1
 use_albedo_texture=false
+emissive_intensity=0
