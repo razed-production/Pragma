@@ -1,0 +1,5 @@
+# Pragma material asset
+version=1
+base_color=0.55,0.78,1.0,1.0
+roughness=0.65
+use_albedo_texture=false
